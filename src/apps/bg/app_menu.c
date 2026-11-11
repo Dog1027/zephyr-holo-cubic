@@ -98,8 +98,8 @@ static lv_obj_t *icon_create(lv_obj_t *parent, int index, const app_t *app)
     lv_obj_add_style(icon, &style_icon, 0);
     lv_obj_add_style(icon, &style_icon_focused, LV_STATE_FOCUSED);
     lv_obj_set_style_bg_color(icon, app_accent(index), 0);
-    lv_obj_add_flag(icon, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-    lv_obj_remove_flag(icon, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_on_focus(icon, true);
+    lv_obj_set_scrollable(icon, false);
 
     lv_obj_t *symbol = lv_label_create(icon);
     lv_label_set_text(symbol, app->icon ? app->icon : LV_SYMBOL_FILE);
@@ -119,7 +119,7 @@ static void app_menu_init(void *scr)
     lv_obj_set_style_bg_grad_color(scr, lv_color_hex(MENU_BG_GRAD_COLOR), 0);
     lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(scr, false);
 
     lv_obj_t *title = lv_label_create(scr);
     lv_label_set_text(title, "CUBE");
@@ -140,7 +140,7 @@ static void app_menu_init(void *scr)
     lv_obj_set_scroll_dir(carousel, LV_DIR_HOR);
     lv_obj_set_scroll_snap_x(carousel, LV_SCROLL_SNAP_CENTER);
     lv_obj_set_scrollbar_mode(carousel, LV_SCROLLBAR_MODE_OFF);
-    lv_obj_remove_flag(carousel, LV_OBJ_FLAG_SCROLL_ELASTIC);
+    lv_obj_set_scroll_elastic(carousel, false);
 
     name_label = lv_label_create(scr);
     lv_obj_set_style_text_color(name_label, lv_color_white(), 0);

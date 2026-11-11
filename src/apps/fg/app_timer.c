@@ -138,7 +138,7 @@ static void state_set(timer_state_t new_state)
 
     lv_label_set_text(state_label, text[state]);
     if (state == STATE_SET) {
-        lv_obj_remove_flag(chips, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(chips, false);
         lv_group_remove_obj(tap_area);
         // 第一個加入 group 的選項會被 focus 並改掉 total_ms，先記住上次選的
         uint32_t last_ms = total_ms;
@@ -152,7 +152,7 @@ static void state_set(timer_state_t new_state)
         }
     }
     else {
-        lv_obj_add_flag(chips, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(chips, true);
         ui_group_solo(tap_area);
     }
     time_show(remaining(), true);
@@ -209,7 +209,7 @@ static void app_timer_init(void *scr)
     lv_arc_set_bg_angles(arc, 0, 360);
     lv_arc_set_range(arc, 0, 1000);
     lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
-    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(arc, false);
     lv_obj_set_style_arc_width(arc, 8, LV_PART_MAIN);
     lv_obj_set_style_arc_color(arc, lv_color_hex(0x1c2333), LV_PART_MAIN);
     lv_obj_set_style_arc_width(arc, 8, LV_PART_INDICATOR);
@@ -244,7 +244,7 @@ static void app_timer_init(void *scr)
         lv_obj_remove_style_all(chip);
         lv_obj_add_style(chip, &style_chip, 0);
         lv_obj_add_style(chip, &style_chip_focused, LV_STATE_FOCUSED);
-        lv_obj_remove_flag(chip, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_scrollable(chip, false);
 
         lv_obj_t *label = lv_label_create(chip);
         lv_label_set_text_fmt(label, "%d", presets[i]);

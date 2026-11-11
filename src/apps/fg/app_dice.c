@@ -105,10 +105,10 @@ static void dice_show(int value)
 {
     for (int i = 0; i < 7; i++) {
         if (pip_mask[value] & BIT(i)) {
-            lv_obj_remove_flag(pips[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(pips[i], false);
         }
         else {
-            lv_obj_add_flag(pips[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_hidden(pips[i], true);
         }
     }
 }
@@ -133,12 +133,12 @@ static void mode_set(int new_mode)
         led_restore();
     }
     if (mode == MODE_DICE) {
-        lv_obj_remove_flag(dice, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(lot_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(dice, false);
+        lv_obj_set_hidden(lot_label, true);
     }
     else {
-        lv_obj_add_flag(dice, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_remove_flag(lot_label, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_hidden(dice, true);
+        lv_obj_set_hidden(lot_label, false);
         lv_label_set_text(lot_label, lots_count > 0 ? "?" : "Put one item per line\nin /lots.txt");
     }
 }
@@ -176,7 +176,7 @@ static lv_obj_t *tab_create(lv_obj_t *parent, const char *text, int tab_mode)
     lv_obj_remove_style_all(tab);
     lv_obj_add_style(tab, &style_tab, 0);
     lv_obj_add_style(tab, &style_tab_focused, LV_STATE_FOCUSED);
-    lv_obj_remove_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(tab, false);
 
     lv_obj_t *label = lv_label_create(tab);
     lv_label_set_text(label, text);
@@ -201,7 +201,8 @@ static void app_dice_init(void *scr)
     lv_obj_set_style_bg_color(dice, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(dice, LV_OPA_COVER, 0);
     lv_obj_align(dice, LV_ALIGN_CENTER, 0, 6);
-    lv_obj_remove_flag(dice, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scrollable(dice, false);
+    lv_obj_set_clickable(dice, false);
 
     for (int i = 0; i < 7; i++) {
         pips[i] = lv_obj_create(dice);
@@ -211,7 +212,7 @@ static void app_dice_init(void *scr)
         lv_obj_set_style_bg_color(pips[i], lv_color_hex(UI_BG_COLOR), 0);
         lv_obj_set_style_bg_opa(pips[i], LV_OPA_COVER, 0);
         lv_obj_align(pips[i], LV_ALIGN_CENTER, pip_pos[i][0] * DICE_PIP_OFFSET, pip_pos[i][1] * DICE_PIP_OFFSET);
-        lv_obj_remove_flag(pips[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_clickable(pips[i], false);
     }
     dice_show(6);
 

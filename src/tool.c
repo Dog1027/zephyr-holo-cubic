@@ -99,8 +99,9 @@ static void esc_timeout(struct k_work *work)
 static K_WORK_DELAYABLE_DEFINE(esc_work, esc_timeout);
 
 // 遙控模式：shell 進入 bypass，每個按鍵直接變成導航指令
-static void remote_bypass(const struct shell *shell, uint8_t *data, size_t len)
+static void remote_bypass(const struct shell *shell, uint8_t *data, size_t len, void *user_data)
 {
+    ARG_UNUSED(user_data);
     k_work_cancel_delayable(&esc_work);
 
     for (size_t i = 0; i < len; i++) {
@@ -153,7 +154,7 @@ static void remote_bypass(const struct shell *shell, uint8_t *data, size_t len)
         case 0x11:  // Ctrl+Q
         case 0x03:  // Ctrl+C
             atomic_set(&esc_state, 0);
-            shell_set_bypass(shell, NULL);
+            shell_set_bypass(shell, NULL, NULL);
             shell_print(shell, "Remote mode off");
             return;
         default:
@@ -170,7 +171,7 @@ static int _ui_remote(const struct shell *shell, size_t argc, char **argv)
 {
     shell_print(shell, "Remote mode: arrows or w/a/s/d move, Enter/Space = OK, "
                        "e = tap, q/Esc/Backspace/b = back to menu, Ctrl+Q or Ctrl+C to quit");
-    shell_set_bypass(shell, remote_bypass);
+    shell_set_bypass(shell, remote_bypass, NULL);
     return 0;
 }
 

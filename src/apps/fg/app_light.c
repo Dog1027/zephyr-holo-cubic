@@ -108,7 +108,8 @@ static void app_light_init(void *scr)
     lv_obj_set_style_bg_opa(preview, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(preview, lv_color_hex(UI_DIM_COLOR), 0);
     lv_obj_center(preview);
-    lv_obj_remove_flag(preview, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scrollable(preview, false);
+    lv_obj_set_clickable(preview, false);
 
     name_label = lv_label_create(preview);
     lv_obj_align(name_label, LV_ALIGN_CENTER, 0, -8);
@@ -127,7 +128,7 @@ static void app_light_init(void *scr)
         lv_obj_add_style(dot, &style_dot_checked, LV_STATE_CHECKED);
         lv_obj_set_style_bg_color(dot, lv_color_hex(colors[i].rgb), 0);
         // 可捲動的物件被 encoder 按下時會進入編輯模式而不是點選
-        lv_obj_remove_flag(dot, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_scrollable(dot, false);
         if (i == LIGHT_OFF) {
             lv_obj_set_style_border_width(dot, 1, 0);
         }

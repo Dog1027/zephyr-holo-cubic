@@ -1,6 +1,6 @@
-// #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
 #include <zephyr/dt-bindings/led/led.h>
 #include <zephyr/dt-bindings/led/worldsemi_ws2812c.h>
+#include <zephyr/dt-bindings/display/panel.h>
 
 / {
     chosen {
@@ -44,7 +44,7 @@
              */
             mdac = <0x40>;
             gamma = <0x01>;
-            colmod = <0x05>;
+            pixel-format = <PANEL_PIXEL_FORMAT_RGB_565X>;
             lcm = <0x2c>;
             porch-param = [0c 0c 00 33 33];
             cmd2en-param = [5a 69 02 01];
@@ -133,8 +133,9 @@
     // 400 kHz (I2C_BITRATE_FAST) made the MPU6050 fail to init: the pins rely on external
     // pull-ups (bias-pull-up is off) and they are too weak for fast mode. Stay at 100 kHz.
     clock-frequency = <I2C_BITRATE_STANDARD>;
-    sda-gpios = <&gpio0 32 GPIO_OPEN_DRAIN>;
-    scl-gpios = <&gpio0 33 GPIO_OPEN_DRAIN>;
+    // GPIO32..39 live on the second bank: gpio1 pin N = GPIO(32 + N)
+    sda-gpios = <&gpio1 0 GPIO_OPEN_DRAIN>;   /* GPIO32 */
+    scl-gpios = <&gpio1 1 GPIO_OPEN_DRAIN>;   /* GPIO33 */
 
     imu: mpu6050@68 {
         compatible = "invensense,mpu6050";

@@ -48,8 +48,17 @@ static uint16_t last_w;
 static uint16_t last_h;
 
 #ifdef CONFIG_LV_Z_FLUSH_THREAD
-// Zephyr LVGL glue (lvgl_display.c)：等 flush thread 把最後一塊送完
-void lvgl_wait_cb(lv_display_t *display);
+#include <display/lv_display_private.h>
+// 等 Zephyr LVGL glue 的 flush thread 把最後一塊送完。
+// 原本直接呼叫 glue 的 lvgl_wait_cb()，新版改成 static，只能透過 flush_wait_cb 呼叫
+static void lvgl_flush_wait(lv_display_t *disp)
+{
+    if (disp->flushing && disp->flush_wait_cb) {
+        disp->flush_wait_cb(disp);
+        disp->flushing = 0;
+    }
+    disp->flushing_last = 0;
+}
 #endif
 
 static void writer_entry(void *arg1, void *arg2, void *arg3)
@@ -154,7 +163,7 @@ void jpeg_begin(void)
     // LVGL 畫完之後畫面是全黑的背景，可以當成「全螢幕大小的圖」
     lv_refr_now(NULL);
 #ifdef CONFIG_LV_Z_FLUSH_THREAD
-    lvgl_wait_cb(lv_display_get_default());
+    lvgl_flush_wait(lv_display_get_default());
 #endif
     last_w = 0;
     last_h = 0;

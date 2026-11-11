@@ -32,7 +32,7 @@ static lv_obj_t *circle_create(lv_obj_t *parent, int32_t size)
     lv_obj_set_size(obj, size, size);
     lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
     lv_obj_center(obj);
-    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(obj, false);
     return obj;
 }
 

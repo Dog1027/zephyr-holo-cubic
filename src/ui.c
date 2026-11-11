@@ -30,7 +30,7 @@ void ui_screen_init(lv_obj_t *scr)
 {
     lv_obj_set_style_bg_color(scr, lv_color_hex(UI_BG_COLOR), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(scr, false);
 }
 
 lv_obj_t *ui_title(lv_obj_t *scr, const char *text)
@@ -71,8 +71,8 @@ lv_obj_t *ui_list_item(lv_obj_t *list, const char *icon, const char *text, const
     lv_obj_add_style(item, &style_item, 0);
     lv_obj_add_style(item, &style_item_focused, LV_STATE_FOCUSED);
     lv_obj_set_style_bg_color(item, accent, 0);
-    lv_obj_add_flag(item, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-    lv_obj_remove_flag(item, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scroll_on_focus(item, true);
+    lv_obj_set_scrollable(item, false);
     lv_obj_set_flex_flow(item, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(item, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
@@ -123,7 +123,7 @@ lv_obj_t *ui_tap_area(lv_obj_t *scr, lv_event_cb_t cb, void *user_data)
     lv_obj_t *area = lv_obj_create(scr);
     lv_obj_remove_style_all(area);
     lv_obj_set_size(area, LV_PCT(100), LV_PCT(100));
-    lv_obj_remove_flag(area, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(area, false);
     lv_obj_add_event_cb(area, cb, LV_EVENT_CLICKED, user_data);
     lv_group_add_obj(lv_group_get_default(), area);
     return area;
@@ -142,7 +142,7 @@ void ui_group_add_children(lv_obj_t *parent)
     uint32_t count = lv_obj_get_child_count(parent);
     for (uint32_t i = 0; i < count; i++) {
         lv_obj_t *child = lv_obj_get_child(parent, i);
-        if (lv_obj_has_flag(child, LV_OBJ_FLAG_CLICKABLE)) {
+        if (lv_obj_is_clickable(child)) {
             lv_group_add_obj(g, child);
         }
     }

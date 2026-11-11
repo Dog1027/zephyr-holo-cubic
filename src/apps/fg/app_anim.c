@@ -113,9 +113,9 @@ static void play_start(void)
     next_frame_ms = k_uptime_get();
     LOG_INF("Play %s, %u ms per frame", anim_path, delay_ms);
 
-    lv_obj_add_flag(title, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(list, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(player, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(title, true);
+    lv_obj_set_hidden(list, true);
+    lv_obj_set_hidden(player, false);
     ui_group_solo(player);
 
     jpeg_begin();
@@ -126,9 +126,9 @@ static void play_stop(void)
 {
     playing = false;
     lv_group_remove_obj(player);
-    lv_obj_add_flag(player, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(title, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_remove_flag(list, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(player, true);
+    lv_obj_set_hidden(title, false);
+    lv_obj_set_hidden(list, false);
     ui_group_add_children(list);
 
     // LVGL 只重畫有變動的區域，整個畫面標記重畫才能蓋掉最後一格動畫
@@ -144,7 +144,7 @@ static void app_anim_init(void *scr)
 
     player = ui_tap_area(scr, player_clicked_cb, NULL);
     lv_group_remove_obj(player);
-    lv_obj_add_flag(player, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_hidden(player, true);
 
     pending_start = false;
     pending_stop = false;
