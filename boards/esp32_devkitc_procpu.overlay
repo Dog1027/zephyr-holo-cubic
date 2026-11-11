@@ -100,7 +100,7 @@
     group1 {
         pinmux = <I2C0_SDA_GPIO32>,
             <I2C0_SCL_GPIO33>;
-        // bias-pull-up;
+        // bias-pull-up only sets the IO_MUX pull, which does nothing on RTC pads (GPIO32/33)
         drive-open-drain;
         output-high;
     };
@@ -130,12 +130,12 @@
 };
 
 &i2c0 {
-    // 400 kHz (I2C_BITRATE_FAST) made the MPU6050 fail to init: the pins rely on external
-    // pull-ups (bias-pull-up is off) and they are too weak for fast mode. Stay at 100 kHz.
+    // No external pull-ups on GPIO32/33: the bus runs on the ESP32 internal RTC pull-ups
+    // (~45 kOhm, enabled in src/i2c_pullup.c), too weak for 400 kHz. Stay at 100 kHz.
     clock-frequency = <I2C_BITRATE_STANDARD>;
     // GPIO32..39 live on the second bank: gpio1 pin N = GPIO(32 + N)
-    sda-gpios = <&gpio1 0 GPIO_OPEN_DRAIN>;   /* GPIO32 */
-    scl-gpios = <&gpio1 1 GPIO_OPEN_DRAIN>;   /* GPIO33 */
+    sda-gpios = <&gpio1 0 (GPIO_OPEN_DRAIN | GPIO_PULL_UP)>;   /* GPIO32 */
+    scl-gpios = <&gpio1 1 (GPIO_OPEN_DRAIN | GPIO_PULL_UP)>;   /* GPIO33 */
 
     imu: mpu6050@68 {
         compatible = "invensense,mpu6050";

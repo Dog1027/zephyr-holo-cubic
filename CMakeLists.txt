@@ -24,5 +24,6 @@ target_sources(app PRIVATE
   src/led.c
   src/prefs.c
   src/nav.c
+  src/i2c_pullup.c
   src/lib/tjpgd/tjpgd.c
 )
