@@ -15,8 +15,9 @@ baud  := "921600"
 # and ttyUSB numbers change on replug. Override: just port=/dev/ttyUSB0 flash
 port  := "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
 flash_args := "--esp-device " + port + " --esp-baud-rate " + baud
-# Same venv that `uv run west` uses; -I keeps the cwd and env out of sys.path
-python := workspace / ".venv/bin/python -I"
+# Host tools (tools/*.py) use this project's own uv environment (pyproject.toml + uv.lock -> .venv),
+# not the Zephyr workspace venv. -I keeps the cwd and env out of sys.path
+python := "uv run --project " + topdir + " python -I"
 
 # Open serial monitor
 monitor:
