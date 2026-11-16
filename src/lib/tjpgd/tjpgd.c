@@ -870,16 +870,14 @@ JRESULT jd_mcu_output(
                     pc += mx * 8 + iy * 8;
                 }
                 py += iy * 8;
+                /* Project change: the chroma sample is indexed instead of stepping pc with
+                 * "pc += ix & 1". Xtensa GCC 14.3 (Zephyr SDK 1.0.1) miscompiled that step
+                 * (pc ended up as 3 * (ix & 1), a NULL load on the next pixel) at -O1 and -O2. */
                 for(ix = 0; ix < mx; ix++) {
-                    cb = pc[0] - 128;   /* Get Cb/Cr component and remove offset */
-                    cr = pc[64] - 128;
-                    if(mx == 16) {                  /* Double block width? */
-                        if(ix == 8) py += 64 - 8;   /* Jump to next block if double block height */
-                        pc += ix & 1;               /* Step forward chroma pointer every two pixels */
-                    }
-                    else {                          /* Single block width */
-                        pc++;                       /* Step forward chroma pointer every pixel */
-                    }
+                    unsigned int ci = (mx == 16) ? ix >> 1 : ix;    /* Two pixels per chroma sample if double width */
+                    cb = pc[ci] - 128;  /* Get Cb/Cr component and remove offset */
+                    cr = pc[ci + 64] - 128;
+                    if(mx == 16 && ix == 8) py += 64 - 8;   /* Jump to next block if double block width */
                     yy = *py++;         /* Get Y component */
                     *pix++ = /*B*/ BYTECLIP(yy + ((int)(1.772 * CVACC) * cb) / CVACC);
                     *pix++ = /*G*/ BYTECLIP(yy - ((int)(0.344 * CVACC) * cb + (int)(0.714 * CVACC) * cr) / CVACC);
