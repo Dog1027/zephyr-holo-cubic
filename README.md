@@ -11,6 +11,7 @@
 | App | 說明 | 需要的 SD 卡內容 |
 |---|---|---|
 | Clock | 時鐘，網路對時；OK 或敲一下切換 12 / 24 小時制（重開機後保留） | `/config.txt`（Wi-Fi，時區） |
+| Weather | 目前天氣（wttr.in）和三天預報，每 30 分鐘更新；OK 或敲一下馬上更新 | `/config.txt`（Wi-Fi，地點） |
 | Files | 瀏覽 SD 卡，資料夾排在前面 | |
 | Anim | 播放 JPEG 序列動畫，循環播放 | `/anim/<名稱>/000.jpg …` |
 | Photos | 相簿，可自動輪播 | `/photo/*.jpg` |
@@ -96,6 +97,9 @@ wlan forget           從 /config.txt 刪掉 SSID / PSK 並斷線
 ntp status            目前時間和時區
 ntp sync              立刻重新對時
 
+weather               目前天氣和三天預報
+weather update        立刻更新
+
 config list           顯示 /config.txt（密碼會遮住）
 config get KEY        讀一個值
 config set KEY VALUE  設定一個值（值有空白要加引號）
@@ -161,6 +165,7 @@ tz=+8
 | `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元（WPA2-PSK）；開放網路不要寫 | |
 | `tz` | 時區（UTC 偏移），例如 `+8`、`-5`、`+5:30`；打開 Clock 時重新讀取 | `+8` |
 | `ntp_server` | 對時用的 NTP server | `pool.ntp.org` |
+| `weather_location` | 天氣的地點：城市名（`Taipei`、`New York`）或 `緯度,經度`；下次更新時生效 | 依 IP 判斷 |
 
 - 一行一個 `key=value`，key 和值前後的空白會被忽略；`#` 開頭的行是註解。
 - 用指令修改時會保留其他行和註解，檔案上限 1 KB。
@@ -229,6 +234,7 @@ src/
   wlan.c                Wi-Fi 連線、掃描與 wlan 指令
   net_job.c             網路工作共用的背景 work queue
   net_time.c            SNTP 對時、時區與 ntp 指令
+  weather.c             從 wttr.in 抓天氣（HTTP，邊收邊解析 JSON）與 weather 指令
   i2c_pullup.c          I2C 腳位的 RTC 內建上拉與開機時的 bus recovery
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
   apps/bg/app_menu.c    Menu
@@ -246,6 +252,7 @@ tools/                  圖片與動畫轉檔工具
 - **I2C 維持 100 kHz**：板子上沒有外部上拉電阻，靠 ESP32 約 45 kΩ 的內建上拉（`src/i2c_pullup.c`），400 kHz 時 MPU6050 會初始化失敗。GPIO32/33 是 RTC pad，pinctrl 的 `bias-pull-up` 對它們沒有作用，上拉要設在 RTC_IO。
 - **重置後 IMU 讀不到**：ESP32 重置時 MPU6050 不會斷電，如果剛好卡在 I2C 讀取途中，它會一直拉著 SDA。開機時在 sensor 初始化之前先做一次 bus recovery 解決。
 - **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。
+- **只能用 HTTP**：TLS 需要的記憶體放不下，所以網路服務都用純 HTTP。回應太大時要邊收邊解析（例如 `weather.c` 的 40 KB JSON 只用 512 B 的 buffer）。
 - **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩不到 1 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
 - **不要在 `SYS_INIT` 裡繪圖**：開了 LVGL flush thread 後，它要等所有 `SYS_INIT` 結束才會啟動，在那之前繪圖會讓開機卡死。第一次繪圖在 `app_thread` 裡的 `gui_start()`。
 - **LVGL 記憶體**：Menu 會一直留在背景，加上前景 app 和切換動畫，32 KB 不夠，目前設為 64 KB。可以用 SysInfo 看實際用量。
