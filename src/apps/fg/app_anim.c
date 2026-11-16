@@ -14,7 +14,6 @@
 #define ANIM_DEFAULT_DELAY_MS 100
 #define ANIM_ACCENT_COLOR     0x2ec4d6
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *title;
     lv_obj_t *list;
@@ -30,7 +29,6 @@ typedef struct {
 } self_t;
 
 APP_FG_REGISTER(Anim, LV_SYMBOL_PLAY, app_anim_init, app_anim_run, app_anim_exit, 7, self_t);
-
 
 static int frame_show(int index)
 {

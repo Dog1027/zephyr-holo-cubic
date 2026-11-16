@@ -26,7 +26,6 @@ static lv_style_t style_dot_focused;
 static lv_style_t style_dot_checked;
 static bool styles_inited;
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *dots[ARRAY_SIZE(colors)];
     lv_obj_t *preview;

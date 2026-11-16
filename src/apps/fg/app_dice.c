@@ -40,7 +40,6 @@ static lv_style_t style_tab;
 static lv_style_t style_tab_focused;
 static bool styles_inited;
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *dice;
     lv_obj_t *pips[7];
@@ -256,7 +255,6 @@ static void app_dice_run(void *scr)
 
     roll_step();
     if (now < self->roll_end_ms) {
-        // 滾動中 LED 隨機變色
         led_set_hex(sys_rand32_get() & 0xffffff);
         self->next_step_ms = now + ROLL_STEP_MS;
         return;

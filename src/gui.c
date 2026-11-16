@@ -58,7 +58,6 @@ static int gui_init(void)
 
     int ret;
 
-    // video
     ret = gui_backlight_init();
     if (ret != 0) {
         LOG_ERR("Failed to initialize backlight");

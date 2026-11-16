@@ -23,7 +23,6 @@ enum {
     ROW_COUNT,
 };
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *rows[ROW_COUNT];     // 每一列右邊的值
     lv_obj_t *scan_rows[WLAN_SCAN_MAX];
@@ -189,5 +188,4 @@ static void app_net_run(void *scr)
 
 static void app_net_exit(void *scr)
 {
-    // LVGL 物件由框架刪除
 }

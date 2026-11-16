@@ -8,9 +8,9 @@
 
 LOG_MODULE_REGISTER(input, CONFIG_CUBE_LOG_LEVEL);
 
-#define ALPHA 0.98f        // 濾波係數
-#define SAMPLING_PERIOD_MS 10  // 取樣週期 (毫秒)
-#define RAD_TO_DEG 57.29578f // 弧度轉角度係數
+#define ALPHA 0.98f        // 互補濾波裡陀螺儀的權重，其餘給加速度計
+#define SAMPLING_PERIOD_MS 10
+#define RAD_TO_DEG 57.29578f
 #define TAP_THRESHOLD 8.0f   // 敲擊判定：相鄰兩次取樣的加速度變化量 (m/s^2)
 #define TAP_COOLDOWN_MS 300  // 敲擊後的冷卻時間，避免一次敲擊觸發多次
 

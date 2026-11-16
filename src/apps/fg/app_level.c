@@ -15,7 +15,6 @@
 #define LEVEL_OK_COLOR      0x43c59e
 #define LEVEL_TILT_COLOR    0xf5a623
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *mode_label;
     lv_obj_t *angle_label;

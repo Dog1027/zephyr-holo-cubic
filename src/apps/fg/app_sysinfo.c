@@ -28,7 +28,6 @@ enum {
     ROW_FIXED_COUNT,
 };
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *rows[ROW_FIXED_COUNT];          // 每一列右邊的值
     lv_obj_t *thread_rows[SYSINFO_MAX_THREADS];
@@ -194,5 +193,4 @@ static void app_sysinfo_run(void *scr)
 
 static void app_sysinfo_exit(void *scr)
 {
-    // LVGL 物件由框架刪除
 }

@@ -22,7 +22,6 @@ typedef struct {
     lv_obj_t *temp;
 } day_view_t;
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *area;
     lv_obj_t *icon;

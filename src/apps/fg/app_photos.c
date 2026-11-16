@@ -17,7 +17,6 @@
 #define PHOTO_BLINK_MS        150
 #define PHOTO_BLINK_COLOR     0x2ec4d6
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     int photo_count;
     int photo_index;

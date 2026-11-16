@@ -239,11 +239,9 @@ static int _led_set(const struct shell *shell, size_t argc, char **argv)
     return 0;
 }
 
-/* Define shell subcommands */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_tool,
     SHELL_CMD_ARG(imu_get, NULL, "get imu data", _imu_get, 1, 0),
     SHELL_CMD_ARG(led_set, NULL, "set led color", _led_set, 4, 0),
     SHELL_SUBCMD_SET_END);
 
-/* Register main shell command */
 SHELL_CMD_ARG_REGISTER(tool, &sub_tool, "Hardware commands", NULL, 1, 0);

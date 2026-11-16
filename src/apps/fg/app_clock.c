@@ -9,7 +9,6 @@
 #define CLOCK_ARC_SIZE      220
 #define CLOCK_ARC_WIDTH     6
 
-// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *arc;
     lv_obj_t *time_label;
