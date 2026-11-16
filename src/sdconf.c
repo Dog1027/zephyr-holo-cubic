@@ -8,7 +8,7 @@
 #include "file.h"
 #include "sdconf.h"
 
-LOG_MODULE_REGISTER(sdconf, CONFIG_GUI_LOG_LEVEL);
+LOG_MODULE_REGISTER(sdconf, CONFIG_CUBE_LOG_LEVEL);
 
 // shell 和 Wi-Fi 的 work queue 都會讀寫，兩塊 buffer 共用一把鎖
 static K_MUTEX_DEFINE(sdconf_mutex);

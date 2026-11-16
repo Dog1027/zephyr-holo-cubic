@@ -227,6 +227,12 @@ tz=+8
 - **只能在這三個 callback 裡呼叫 LVGL**，所有 LVGL 操作都在同一個 thread。
 - **可選取的物件**要加進 `lv_group_get_default()`，並移除 `LV_OBJ_FLAG_SCROLLABLE`，選取時會收到 `LV_EVENT_CLICKED`。`ui_list_item()` 和 `ui_tap_area()` 已經處理好這些。
 - **想自己處理 next / prev / ok / 敲擊**（例如換照片）：在 `init` 呼叫 `nav_set_handler()`，回傳 `true` 表示已處理；app 關閉時框架會自動清掉。
+- **常用的共用函式**，先找這裡再自己寫：
+  - `ui.h`：`ui_label()`（字型 + 顏色）、`ui_label_set_fmt()`（文字有變才更新）、`ui_list_row()`（右邊帶數值的列表項）。
+  - `led.h`：`led_flash()` 亮一下再自動回到底色。
+  - `file.h`：SD 卡路徑一律用 `FILE_ROOT "/..."`。
+  - `net_time.h`：`net_time_wday_names` / `net_time_month_names`。
+- **Log**：所有模組和 app 共用 `CONFIG_CUBE_LOG_LEVEL`（預設 3 = INFO）；app 上限 `CONFIG_APP_MAX`（預設 24）。
 
 ## 專案結構
 

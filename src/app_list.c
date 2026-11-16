@@ -1,50 +1,34 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <string.h>
 #include "app_list.h"
 
-static sys_slist_t app_list = SYS_SLIST_STATIC_INIT(&app_list);
+LOG_MODULE_REGISTER(app_list, CONFIG_CUBE_LOG_LEVEL);
+
+static const app_t *apps[CONFIG_APP_MAX];
+static int app_count;
 
 int app_list_insert(const app_t *app)
 {
     if (app == NULL) {
         return -EINVAL;
     }
-
-    sys_snode_t *prev = NULL;
-    sys_snode_t *node = sys_slist_peek_head(&app_list);
-
-    app_node_t *app_node = k_malloc(sizeof(app_node_t));
-    if (app_node == NULL) {
-        printk("Failed to allocate memory for app node\n");
+    if (app_count >= CONFIG_APP_MAX) {
+        LOG_ERR("Too many apps, raise CONFIG_APP_MAX (%s not added)", app->name);
         return -ENOMEM;
     }
-    app_node->app = app;
 
-    while (node != NULL) {
-        app_node_t *curr = CONTAINER_OF(node, app_node_t, node);
-        if (curr->app->prio > app->prio) {
-            sys_slist_insert(&app_list, prev, &app_node->node);
-            return 0;
-        }
-        prev = node;
-        node = sys_slist_peek_next(node);
+    int i = app_count;
+    while (i > 0 && apps[i - 1]->prio > app->prio) {
+        apps[i] = apps[i - 1];
+        i--;
     }
-    
-    sys_slist_append(&app_list, &app_node->node);
+    apps[i] = app;
+    app_count++;
     return 0;
 }
 
 const app_t *app_list_get(int index)
 {
-    int i = 0;
-    sys_snode_t *node = sys_slist_peek_head(&app_list);
-    while (node != NULL) {
-        if (i == index) {
-            app_node_t *app_node = CONTAINER_OF(node, app_node_t, node);
-            return app_node->app;
-        }
-        node = sys_slist_peek_next(node);
-        i++;
-    }
-    return NULL;
+    return (index >= 0 && index < app_count) ? apps[index] : NULL;
 }

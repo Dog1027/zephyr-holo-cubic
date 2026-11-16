@@ -17,8 +17,11 @@ int led_set_base(uint32_t rgb);
 // The current base color (0xRRGGBB, 0 means off)
 uint32_t led_get_base(void);
 
-// Go back to the base color, use this instead of turning the LED off
+// Go back to the base color, use this instead of turning the LED off. Cancels a pending led_flash()
 int led_restore(void);
+
+// Show rgb now and go back to the base color after ms (on the system work queue)
+void led_flash(uint32_t rgb, uint32_t ms);
 
 // Write the raw values without scaling
 int led_set_raw(uint8_t r, uint8_t g, uint8_t b);

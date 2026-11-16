@@ -6,7 +6,7 @@
 #include <lvgl.h>
 #include "gui.h"
 
-LOG_MODULE_REGISTER(gui, CONFIG_GUI_LOG_LEVEL);
+LOG_MODULE_REGISTER(gui, CONFIG_CUBE_LOG_LEVEL);
 
 static const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 

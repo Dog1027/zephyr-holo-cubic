@@ -8,7 +8,7 @@
 #include "jpeg.h"
 #include "file.h"
 
-LOG_MODULE_REGISTER(jpeg, CONFIG_GUI_LOG_LEVEL);
+LOG_MODULE_REGISTER(jpeg, CONFIG_CUBE_LOG_LEVEL);
 
 #define JPEG_MAX_WIDTH    240
 #define JPEG_MCU_HEIGHT   16     // TJpgDec 一次輸出一列 MCU，4:2:0 時高 16

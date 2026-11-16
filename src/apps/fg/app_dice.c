@@ -8,7 +8,7 @@
 #include <string.h>
 
 // 抽籤清單：每行一個選項，只能用英數字 (字型沒有中文)
-#define LOTS_FILE           "/0:/lots.txt"
+#define LOTS_FILE           FILE_ROOT "/lots.txt"
 #define LOTS_MAX            32
 #define LOTS_LEN            40
 #define DICE_SIZE           110
@@ -51,7 +51,6 @@ typedef struct {
     bool rolling;
     int64_t roll_end_ms;
     int64_t next_step_ms;
-    int64_t led_off_ms;
 } self_t;
 
 APP_FG_REGISTER(Dice, LV_SYMBOL_SHUFFLE, app_dice_init, app_dice_run, app_dice_exit, 10, self_t);
@@ -134,7 +133,6 @@ static void mode_set(int new_mode)
     if (self->rolling) {
         // 擲到一半切換分頁，LED 不能停在滾動中的隨機顏色
         self->rolling = false;
-        self->led_off_ms = 0;
         led_restore();
     }
     if (self->mode == MODE_DICE) {
@@ -242,8 +240,6 @@ static void app_dice_init(void *scr)
     lv_obj_set_flex_align(tabs, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(tabs, 12, 0);
 
-    self->rolling = false;
-    self->led_off_ms = 0;
     // 第一個 tab 加入 group 時會被 focus，觸發 mode_set，所以內容要先建好
     tab_create(tabs, "DICE", MODE_DICE);
     tab_create(tabs, "LOTS", MODE_LOTS);
@@ -253,11 +249,6 @@ static void app_dice_init(void *scr)
 static void app_dice_run(void *scr)
 {
     int64_t now = k_uptime_get();
-
-    if (self->led_off_ms != 0 && now >= self->led_off_ms) {
-        self->led_off_ms = 0;
-        led_restore();
-    }
 
     if (!self->rolling || now < self->next_step_ms) {
         return;
@@ -272,8 +263,7 @@ static void app_dice_run(void *scr)
     }
 
     self->rolling = false;
-    led_set_hex(DICE_ACCENT_COLOR);
-    self->led_off_ms = now + LED_HOLD_MS;
+    led_flash(DICE_ACCENT_COLOR, LED_HOLD_MS);
 }
 
 static void app_dice_exit(void *scr)

@@ -13,7 +13,7 @@
 #include "net_time.h"
 #include "sdconf.h"
 
-LOG_MODULE_REGISTER(net_time, CONFIG_WLAN_LOG_LEVEL);
+LOG_MODULE_REGISTER(net_time, CONFIG_CUBE_LOG_LEVEL);
 
 #define KEY_TZ          "tz"
 #define KEY_SERVER      "ntp_server"
@@ -22,6 +22,10 @@ LOG_MODULE_REGISTER(net_time, CONFIG_WLAN_LOG_LEVEL);
 #define SNTP_TIMEOUT_MS 3000
 #define RESYNC_DELAY    K_HOURS(6)
 #define RETRY_DELAY     K_SECONDS(15)
+
+const char *const net_time_wday_names[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+const char *const net_time_month_names[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 static void sync_work_fn(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(sync_work, sync_work_fn);

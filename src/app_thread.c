@@ -6,7 +6,7 @@
 #include <lvgl.h>
 #include <string.h>
 
-LOG_MODULE_REGISTER(app_thread, CONFIG_APP_THREAD_LOG_LEVEL);
+LOG_MODULE_REGISTER(app_thread, CONFIG_CUBE_LOG_LEVEL);
 
 static void app_thread_entry(void *arg1, void *arg2, void *arg3);
 

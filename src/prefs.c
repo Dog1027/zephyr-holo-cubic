@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "prefs.h"
 
-LOG_MODULE_REGISTER(prefs, CONFIG_APP_MGR_LOG_LEVEL);
+LOG_MODULE_REGISTER(prefs, CONFIG_CUBE_LOG_LEVEL);
 
 #define PREFS_ROOT "cube"
 

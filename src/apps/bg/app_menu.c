@@ -30,10 +30,7 @@ static int64_t status_key = -1;
 
 static lv_obj_t *status_label_create(lv_obj_t *scr, lv_align_t align, int32_t x)
 {
-    lv_obj_t *label = lv_label_create(scr);
-    lv_label_set_text(label, "");
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_t *label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(label, align, x, 14);
     return label;
 }

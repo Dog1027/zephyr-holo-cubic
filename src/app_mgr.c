@@ -3,7 +3,7 @@
 #include "app_list.h"
 #include "app_mgr.h"
 
-LOG_MODULE_REGISTER(app_mgr, CONFIG_APP_MGR_LOG_LEVEL);
+LOG_MODULE_REGISTER(app_mgr, CONFIG_CUBE_LOG_LEVEL);
 
 #define APP_MGR_QUEUE_LEN 4
 

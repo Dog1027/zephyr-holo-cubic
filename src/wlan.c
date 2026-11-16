@@ -11,7 +11,7 @@
 #include "sdconf.h"
 #include "wlan.h"
 
-LOG_MODULE_REGISTER(wlan, CONFIG_WLAN_LOG_LEVEL);
+LOG_MODULE_REGISTER(wlan, CONFIG_CUBE_LOG_LEVEL);
 
 #define KEY_SSID "wifi_ssid"
 #define KEY_PSK  "wifi_psk"

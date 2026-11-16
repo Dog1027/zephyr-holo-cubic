@@ -1,33 +1,25 @@
+config CUBE_LOG_LEVEL
+    int "Log level of the project's modules and apps"
+    default 3
+    range 0 4
+    help
+      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
+
+config APP_MAX
+    int "Maximum number of apps"
+    default 24
+    help
+      Size of the app list, the background app included.
+
 config GUI_INIT_PRIORITY
     int "GUI Initialization Priority"
     default 91
     range 0 99
 
-config GUI_LOG_LEVEL
-    int "GUI Log Level"
-    default 3
-    range 0 4
-    help
-      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
-
 config APP_MGR_INIT_PRIORITY
     int "Application Manager Initialization Priority"
     default 92
     range 0 99
-
-config APP_MGR_LOG_LEVEL
-    int "Application Manager Log Level"
-    default 3
-    range 0 4
-    help
-      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
-
-config APP_THREAD_LOG_LEVEL
-    int "Application Thread Log Level"
-    default 3
-    range 0 4
-    help
-      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
 
 config APP_THREAD_STACK_SIZE
     int "Application Thread Stack Size"
@@ -64,7 +56,7 @@ config FILE_INIT_PRIORITY
 
 config INPUT_THREAD_STACK_SIZE
     int "Input Thread Stack Size"
-    default 8192
+    default 2048
     help
       Reads the IMU every 10 ms. Check the real usage in the SysInfo app before shrinking it.
 
@@ -81,13 +73,6 @@ config INPUT_PITCH_INVERT
       Flip the sign of pitch for everything that reads it (Level bubble, back gesture
       is not affected since it uses both directions).
 
-config INPUT_LOG_LEVEL
-    int "Input Log Level"
-    default 3
-    range 0 4
-    help
-      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
-
 config WLAN_INIT_PRIORITY
     int "Wi-Fi Initialization Priority"
     default 95
@@ -101,12 +86,5 @@ config NET_JOB_STACK_SIZE
     help
       Shared queue for blocking network work (net_job.h): the Wi-Fi connect request
       (reads the SD card config), SNTP, HTTP.
-
-config WLAN_LOG_LEVEL
-    int "Wi-Fi Log Level"
-    default 3
-    range 0 4
-    help
-      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
 
 rsource "apps/Kconfig.apps"

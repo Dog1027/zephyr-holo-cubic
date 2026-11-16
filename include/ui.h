@@ -9,6 +9,12 @@
 // Black background, no scrolling
 void ui_screen_init(lv_obj_t *scr);
 
+// Label with a font and a 0xRRGGBB color, empty text
+lv_obj_t *ui_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color);
+
+// printf into a label, only when the text changes (setting the same text redraws it anyway)
+void ui_label_set_fmt(lv_obj_t *label, const char *fmt, ...);
+
 // Small grey title at the top of the screen
 lv_obj_t *ui_title(lv_obj_t *scr, const char *text);
 
@@ -19,6 +25,10 @@ lv_obj_t *ui_list_create(lv_obj_t *scr);
 // The row is added to the default group and gets the accent color when highlighted.
 lv_obj_t *ui_list_item(lv_obj_t *list, const char *icon, const char *text, const char *detail,
                        lv_color_t accent);
+
+// List row with a value on the right, "-" at first. Returns the value label (set it with
+// ui_label_set_fmt); the row itself is its parent
+lv_obj_t *ui_list_row(lv_obj_t *list, const char *icon, const char *text, lv_color_t accent);
 
 // Copy of text that is freed together with obj. Use it instead of reading a label back:
 // LV_LABEL_LONG_MODE_DOTS overwrites the end of the label's own text with "..."

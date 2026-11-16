@@ -4,7 +4,7 @@
 #include "app_mgr.h"
 #include "nav.h"
 
-LOG_MODULE_REGISTER(nav, CONFIG_APP_THREAD_LOG_LEVEL);
+LOG_MODULE_REGISTER(nav, CONFIG_CUBE_LOG_LEVEL);
 
 #define NAV_QUEUE_LEN 8
 

@@ -1,13 +1,14 @@
 #pragma once
 
 #include <stddef.h>
+#include "file.h"
 
 /*
  * Settings the user can also edit on a PC: /config.txt on the SD card, one "key=value" per line.
  * Spaces around the key and the value are ignored. Blank lines, '#' comments and keys this
  * firmware does not know are kept as they are when a value is changed.
  */
-#define SDCONF_PATH "/0:/config.txt"
+#define SDCONF_PATH FILE_ROOT "/config.txt"
 
 // Whole file limit, the file is read into a fixed buffer
 #define SDCONF_MAX_SIZE 1024

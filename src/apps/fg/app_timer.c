@@ -258,7 +258,6 @@ static void app_timer_init(void *scr)
         lv_obj_add_event_cb(chip, chip_clicked_cb, LV_EVENT_CLICKED, NULL);
     }
 
-    self->face_down = false;
     nav_set_handler(nav_cb);
     if (state == STATE_RUNNING && remaining() == 0) {
         state = STATE_DONE;

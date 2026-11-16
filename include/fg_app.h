@@ -24,7 +24,7 @@
     BUILD_ASSERT((_prio) != 0, "Foreground app priority cannot be 0"); \
     BUILD_ASSERT(sizeof(_state_t) <= CONFIG_APP_STATE_SIZE, \
                  #_name " state does not fit, raise CONFIG_APP_STATE_SIZE"); \
-    LOG_MODULE_REGISTER(_name, CONFIG_APP_FG_LOG_LEVEL); \
+    LOG_MODULE_REGISTER(_name, CONFIG_CUBE_LOG_LEVEL); \
     static _state_t *const self __maybe_unused = (_state_t *)app_state_mem; \
     static void _exit(void *); \
     APP_REGISTER(_name, _icon, _init, _run, _exit, _prio, sizeof(_state_t))

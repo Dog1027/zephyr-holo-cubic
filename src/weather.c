@@ -8,11 +8,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "net_job.h"
+#include "net_time.h"
 #include "sdconf.h"
 #include "weather.h"
 #include "wlan.h"
 
-LOG_MODULE_REGISTER(weather, CONFIG_WLAN_LOG_LEVEL);
+LOG_MODULE_REGISTER(weather, CONFIG_CUBE_LOG_LEVEL);
 
 #define HOST            "wttr.in"
 #define KEY_LOCATION    "weather_location"
@@ -541,7 +542,6 @@ SYS_INIT(weather_init, APPLICATION, CONFIG_WLAN_INIT_PRIORITY);
 
 static const char *const kind_names[] = {"sunny", "partly cloudy", "cloudy", "fog",
                                          "rain", "snow", "thunder"};
-static const char *const wday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 static int _weather_show(const struct shell *shell, size_t argc, char **argv)
 {
@@ -567,7 +567,7 @@ static int _weather_show(const struct shell *shell, size_t argc, char **argv)
                 w->wind_dir);
     for (int i = 0; i < w->day_count; i++) {
         const weather_day_t *d = &w->days[i];
-        shell_print(shell, "%s: %d / %d C, %s, rain %d%%", wday_names[d->wday], d->max_c, d->min_c,
+        shell_print(shell, "%s: %d / %d C, %s, rain %d%%", net_time_wday_names[d->wday], d->max_c, d->min_c,
                     kind_names[d->kind], d->rain);
     }
     return 0;

@@ -11,6 +11,10 @@
  *   ntp_server=...     default pool.ntp.org
  */
 
+// "Sun" ... "Sat" (tm_wday) and "Jan" ... "Dec" (tm_mon)
+extern const char *const net_time_wday_names[7];
+extern const char *const net_time_month_names[12];
+
 // Local time. Returns false (tm untouched) until the first sync succeeded
 bool net_time_now(struct tm *tm);
 

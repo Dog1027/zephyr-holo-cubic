@@ -9,10 +9,6 @@
 #define CLOCK_ARC_SIZE      220
 #define CLOCK_ARC_WIDTH     6
 
-static const char *const weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-static const char *const months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
 // app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
 typedef struct {
     lv_obj_t *arc;
@@ -27,14 +23,6 @@ typedef struct {
 } self_t;
 
 APP_FG_REGISTER(Clock, LV_SYMBOL_LOOP, app_clock_init, app_clock_run, app_clock_exit, 4, self_t);
-
-static lv_obj_t *label_create(lv_obj_t *scr, const lv_font_t *font, lv_color_t color)
-{
-    lv_obj_t *label = lv_label_create(scr);
-    lv_obj_set_style_text_font(label, font, 0);
-    lv_obj_set_style_text_color(label, color, 0);
-    return label;
-}
 
 // 還沒對時：說明原因
 static void show_status(void)
@@ -60,8 +48,8 @@ static void show_time(const struct tm *tm)
         lv_label_set_text(self->ampm_label, "");
     }
     lv_label_set_text_fmt(self->time_label, "%02d:%02d", hour, tm->tm_min);
-    lv_label_set_text_fmt(self->date_label, "%s  %d %s %d", weekdays[tm->tm_wday], tm->tm_mday,
-                          months[tm->tm_mon], tm->tm_year + 1900);
+    lv_label_set_text_fmt(self->date_label, "%s  %d %s %d", net_time_wday_names[tm->tm_wday], tm->tm_mday,
+                          net_time_month_names[tm->tm_mon], tm->tm_year + 1900);
     lv_label_set_text(self->status_label, "");
     lv_arc_set_value(self->arc, tm->tm_sec);
     // AM / PM 跟在時間右下方，時間的寬度會變
@@ -105,12 +93,12 @@ static void app_clock_init(void *scr)
     lv_obj_set_style_arc_opa(self->arc, LV_OPA_30, LV_PART_MAIN);
     lv_obj_set_style_arc_color(self->arc, lv_color_hex(CLOCK_ACCENT_COLOR), LV_PART_INDICATOR);
 
-    self->time_label = label_create(scr, &lv_font_montserrat_48, lv_color_white());
+    self->time_label = ui_label(scr, &lv_font_montserrat_48, 0xffffff);
     lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
-    self->ampm_label = label_create(scr, &lv_font_montserrat_14, lv_color_hex(CLOCK_ACCENT_COLOR));
-    self->date_label = label_create(scr, &lv_font_montserrat_18, lv_color_hex(UI_DIM_COLOR));
+    self->ampm_label = ui_label(scr, &lv_font_montserrat_14, CLOCK_ACCENT_COLOR);
+    self->date_label = ui_label(scr, &lv_font_montserrat_18, UI_DIM_COLOR);
     lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, 34);
-    self->status_label = label_create(scr, &lv_font_montserrat_14, lv_color_hex(UI_DIM_COLOR));
+    self->status_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 34);
 
     self->shown_key = -1;

@@ -8,7 +8,7 @@
 #include <string.h>
 
 // 每個動畫是 ANIM_ROOT 底下的一個資料夾：000.jpg、001.jpg……，可選的 delay.txt 寫每格毫秒數
-#define ANIM_ROOT             "/0:/anim"
+#define ANIM_ROOT             FILE_ROOT "/anim"
 #define ANIM_PATH_MAX         128
 #define ANIM_MAX_ENTRIES      16
 #define ANIM_DEFAULT_DELAY_MS 100
@@ -149,9 +149,6 @@ static void app_anim_init(void *scr)
     lv_group_remove_obj(self->player);
     lv_obj_set_hidden(self->player, true);
 
-    self->pending_start = false;
-    self->pending_stop = false;
-    self->playing = false;
     list_load();
 }
 
@@ -192,7 +189,4 @@ static void app_anim_run(void *scr)
 
 static void app_anim_exit(void *scr)
 {
-    self->playing = false;
-    self->pending_start = false;
-    self->pending_stop = false;
 }

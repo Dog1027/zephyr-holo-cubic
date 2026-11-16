@@ -1,10 +1,11 @@
 #include "fg_app.h"
+#include "file.h"
 #include "ui.h"
 #include <zephyr/fs/fs.h>
 #include <string.h>
 #include <stdio.h>
 
-#define FILES_ROOT          "/0:"
+#define FILES_ROOT          FILE_ROOT
 #define FILES_PATH_MAX      128
 #define FILES_MAX_ENTRIES   24  // 每個 item 都佔 LVGL 記憶體，太多會耗盡 pool
 #define FILES_ACCENT_COLOR  0xf5a623
@@ -143,7 +144,6 @@ static void app_files_init(void *scr)
     self->list = ui_list_create(scr);
 
     strcpy(self->cur_path, FILES_ROOT);
-    self->pending = false;
     list_refresh();
 }
 

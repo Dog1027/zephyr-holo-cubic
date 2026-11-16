@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "nav.h"
 #include "weather.h"
+#include "net_time.h"
 #include <string.h>
 
 #define WEATHER_ACCENT_COLOR    0xffc83d
@@ -14,8 +15,6 @@
 #define DAY_COLUMN_WIDTH        76
 #define STATUS_REFRESH_MS       5000
 #define MAX_AGE_MS              (30 * 60 * 1000)   // 打開時或開著時，資料超過這個時間就重抓
-
-static const char *const wday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 typedef struct {
     lv_obj_t *icon;
@@ -125,15 +124,6 @@ static lv_obj_t *icon_create(lv_obj_t *parent, int32_t size)
 
 /* ---------- 畫面 ---------- */
 
-static lv_obj_t *label_create(lv_obj_t *parent, const lv_font_t *font, uint32_t color)
-{
-    lv_obj_t *label = lv_label_create(parent);
-    lv_label_set_text(label, "");
-    lv_obj_set_style_text_font(label, font, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
-    return label;
-}
-
 static void show_data(void)
 {
     const weather_t *w = &self->data;
@@ -153,7 +143,7 @@ static void show_data(void)
         }
         lv_obj_set_hidden(d->icon, false);
         icon_draw(d->icon, w->days[i].kind);
-        lv_label_set_text(d->name, i == 0 ? "Today" : wday_names[w->days[i].wday]);
+        lv_label_set_text(d->name, i == 0 ? "Today" : net_time_wday_names[w->days[i].wday]);
         lv_label_set_text_fmt(d->temp, "%d° / %d°", w->days[i].max_c, w->days[i].min_c);
     }
 }
@@ -206,35 +196,35 @@ static void app_weather_init(void *scr)
     self->shown_state = -1;
     ui_screen_init(scr);
 
-    self->area = label_create(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->area = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(self->area, LV_ALIGN_TOP_MID, 0, 14);
 
     self->icon = icon_create(scr, BIG_ICON_SIZE);
     lv_obj_align(self->icon, LV_ALIGN_TOP_LEFT, 22, 38);
-    self->temp = label_create(scr, &lv_font_montserrat_48, 0xffffff);
+    self->temp = ui_label(scr, &lv_font_montserrat_48, 0xffffff);
     lv_obj_align(self->temp, LV_ALIGN_TOP_LEFT, 112, 50);
 
-    self->desc = label_create(scr, &lv_font_montserrat_18, 0xffffff);
+    self->desc = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
     lv_obj_set_width(self->desc, UI_SCREEN_SIZE - 24);
     lv_label_set_long_mode(self->desc, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(self->desc, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(self->desc, LV_ALIGN_TOP_MID, 0, 120);
-    self->detail = label_create(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->detail = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(self->detail, LV_ALIGN_TOP_MID, 0, 146);
 
     // 三天預報，一天一欄
     for (int i = 0; i < WEATHER_DAYS; i++) {
         day_view_t *d = &self->days[i];
         int32_t x = (i - 1) * DAY_COLUMN_WIDTH;
-        d->name = label_create(scr, &lv_font_montserrat_14, WEATHER_ACCENT_COLOR);
+        d->name = ui_label(scr, &lv_font_montserrat_14, WEATHER_ACCENT_COLOR);
         lv_obj_align(d->name, LV_ALIGN_TOP_MID, x, 172);
         d->icon = icon_create(scr, SMALL_ICON_SIZE);
         lv_obj_align(d->icon, LV_ALIGN_TOP_MID, x, 190);
-        d->temp = label_create(scr, &lv_font_montserrat_14, 0xffffff);
+        d->temp = ui_label(scr, &lv_font_montserrat_14, 0xffffff);
         lv_obj_align(d->temp, LV_ALIGN_TOP_MID, x, 220);
     }
 
-    self->status = label_create(scr, &lv_font_montserrat_18, UI_DIM_COLOR);
+    self->status = ui_label(scr, &lv_font_montserrat_18, UI_DIM_COLOR);
     lv_obj_set_style_text_align(self->status, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(self->status);
 

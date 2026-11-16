@@ -4,7 +4,7 @@
 typedef struct {
     float roll;
     float pitch;
-    float yaw;
 } input_angle_t;
 
-char input_get(input_angle_t *angle);
+// Latest filtered angles (updated every 10 ms), safe from any thread
+void input_get(input_angle_t *angle);

@@ -1,4 +1,9 @@
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 #include "ui.h"
+
+#define UI_LABEL_FMT_MAX 64
 
 static lv_style_t style_item;
 static lv_style_t style_item_focused;
@@ -31,6 +36,29 @@ void ui_screen_init(lv_obj_t *scr)
     lv_obj_set_style_bg_color(scr, lv_color_hex(UI_BG_COLOR), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_scrollable(scr, false);
+}
+
+lv_obj_t *ui_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color)
+{
+    lv_obj_t *label = lv_label_create(parent);
+    lv_label_set_text(label, "");
+    lv_obj_set_style_text_font(label, font, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(color), 0);
+    return label;
+}
+
+void ui_label_set_fmt(lv_obj_t *label, const char *fmt, ...)
+{
+    char buf[UI_LABEL_FMT_MAX];
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    if (strcmp(lv_label_get_text(label), buf) != 0) {
+        lv_label_set_text(label, buf);
+    }
 }
 
 lv_obj_t *ui_title(lv_obj_t *scr, const char *text)
@@ -91,6 +119,12 @@ lv_obj_t *ui_list_item(lv_obj_t *list, const char *icon, const char *text, const
 
     lv_group_add_obj(lv_group_get_default(), item);
     return item;
+}
+
+lv_obj_t *ui_list_row(lv_obj_t *list, const char *icon, const char *text, lv_color_t accent)
+{
+    lv_obj_t *item = ui_list_item(list, icon, text, "-", accent);
+    return lv_obj_get_child(item, 2);
 }
 
 static void strdup_free_cb(lv_event_t *e)

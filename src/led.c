@@ -46,9 +46,22 @@ uint32_t led_get_base(void)
     return base_rgb;
 }
 
+static void flash_end(struct k_work *work)
+{
+    led_set_hex(base_rgb);
+}
+static K_WORK_DELAYABLE_DEFINE(flash_work, flash_end);
+
 int led_restore(void)
 {
+    k_work_cancel_delayable(&flash_work);
     return led_set_hex(base_rgb);
+}
+
+void led_flash(uint32_t rgb, uint32_t ms)
+{
+    led_set_hex(rgb);
+    k_work_reschedule(&flash_work, K_MSEC(ms));
 }
 
 // 開機時恢復上次 Light app 設定的顏色

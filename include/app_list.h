@@ -1,12 +1,9 @@
 #pragma once
 
-#include <zephyr/sys/slist.h>
 #include "app.h"
 
-typedef struct {
-    sys_snode_t node;
-    const app_t *app;
-} app_node_t;
-
+// Add an app, kept sorted by prio (called by APP_REGISTER at boot)
 int app_list_insert(const app_t *app);
+
+// App at index (0 is the background app), NULL past the end
 const app_t *app_list_get(int index);

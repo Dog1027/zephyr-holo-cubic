@@ -6,7 +6,7 @@
 #include "input.h"
 #include "nav.h"
 
-LOG_MODULE_REGISTER(input, CONFIG_INPUT_LOG_LEVEL);
+LOG_MODULE_REGISTER(input, CONFIG_CUBE_LOG_LEVEL);
 
 #define ALPHA 0.98f        // 濾波係數
 #define SAMPLING_PERIOD_MS 10  // 取樣週期 (毫秒)
@@ -26,32 +26,24 @@ K_THREAD_DEFINE(
     0
 );
 
-K_MUTEX_DEFINE(input_mutex);
+static K_MUTEX_DEFINE(input_mutex);
 
 static const struct device *imu_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(imu));
-static input_angle_t current_angle = {0.0f, 0.0f, 0.0f};
-
+static input_angle_t current_angle;
 
 // 對外提供的角度，依螢幕鏡像 / IMU 安裝方向修正正負號 (內部濾波一律用感測器原始方向)
-static input_angle_t angle_out(void)
+void input_get(input_angle_t *angle)
 {
     k_mutex_lock(&input_mutex, K_FOREVER);
-    input_angle_t angle = current_angle;
+    *angle = current_angle;
     k_mutex_unlock(&input_mutex);
 
     if (IS_ENABLED(CONFIG_INPUT_ROLL_INVERT)) {
-        angle.roll = -angle.roll;
+        angle->roll = -angle->roll;
     }
     if (IS_ENABLED(CONFIG_INPUT_PITCH_INVERT)) {
-        angle.pitch = -angle.pitch;
+        angle->pitch = -angle->pitch;
     }
-    return angle;
-}
-
-char input_get(input_angle_t *angle)
-{
-    *angle = angle_out();
-    return 0;
 }
 
 static int imu_read(float accel[3], float gyro[3])
@@ -100,7 +92,7 @@ static void accel_angle(const float accel[3], float *roll, float *pitch)
     *pitch = atan2f(-accel[0], sqrtf(accel[1] * accel[1] + accel[2] * accel[2])) * RAD_TO_DEG;
 }
 
-void input_thread_entry(void *arg1, void *arg2, void *arg3)
+static void input_thread_entry(void *arg1, void *arg2, void *arg3)
 {
     float accel[3];
     float gyro[3];
@@ -163,36 +155,3 @@ void input_thread_entry(void *arg1, void *arg2, void *arg3)
 
     }
 }
-
-/*
-K_QUEUE_DEFINE(input_queue);
-
-typedef struct {
-    void *_;
-    char key;
-} input_data_t;
-
-char input_get()
-{
-    char key;
-    input_data_t *data;
-    data = k_queue_get(&input_queue, K_NO_WAIT);
-    if (data == NULL) {
-        return '\0';
-    }
-    key = data->key;
-    k_free(data);
-    return key;
-}
-
-void input_put(char key)
-{
-    input_data_t *data = k_malloc(sizeof(input_data_t));
-    if (data == NULL) {
-        return;
-    }
-    data->key = key;
-    k_queue_append(&input_queue, data);
-}
-
-*/

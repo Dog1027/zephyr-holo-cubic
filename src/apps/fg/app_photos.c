@@ -10,7 +10,7 @@
 #include <strings.h>
 
 // 相簿：顯示 PHOTO_ROOT 底下的 baseline JPEG（最大 240x240），用 tools/img2jpg.py 轉檔
-#define PHOTO_ROOT            "/0:/photo"
+#define PHOTO_ROOT            FILE_ROOT "/photo"
 #define PHOTO_PATH_MAX        128
 #define PHOTO_SLIDE_MS        5000    // 幻燈片模式每張停留時間
 #define PHOTO_START_DELAY_MS  50      // 淡入動畫結束後再多等一下才開始直接畫
@@ -27,13 +27,11 @@ typedef struct {
     int pending_step;  // 還沒處理的換張：next / tap 加 1，prev 減 1
     int64_t start_ms;
     int64_t next_slide_ms;
-    int64_t led_off_ms;
     char *names;
     size_t *name_offsets;
 } self_t;
 
 APP_FG_REGISTER(Photos, LV_SYMBOL_IMAGE, app_photos_init, app_photos_run, app_photos_exit, 8, self_t);
-
 
 static void photos_free(void)
 {
@@ -134,12 +132,6 @@ static void photo_show(int index, int step)
     LOG_ERR("No photo could be shown");
 }
 
-static void blink(void)
-{
-    led_set_hex(PHOTO_BLINK_COLOR);
-    self->led_off_ms = k_uptime_get() + PHOTO_BLINK_MS;
-}
-
 // next / tap 下一張，prev 上一張，ok 開關幻燈片；只記下來，交給 run 畫
 static bool nav_cb(nav_cmd_t cmd)
 {
@@ -164,12 +156,6 @@ static void app_photos_init(void *scr)
     ui_screen_init(scr);
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
 
-    self->started = false;
-    self->slideshow = false;
-    self->pending_toggle = false;
-    self->pending_step = 0;
-    self->photo_index = 0;
-    self->led_off_ms = 0;
     self->start_ms = k_uptime_get();
 
     self->photo_count = photos_load();
@@ -192,11 +178,6 @@ static void app_photos_init(void *scr)
 static void app_photos_run(void *scr)
 {
     int64_t now = k_uptime_get();
-
-    if (self->led_off_ms != 0 && now >= self->led_off_ms) {
-        self->led_off_ms = 0;
-        led_restore();
-    }
 
     if (self->photo_count == 0) {
         return;
@@ -221,7 +202,7 @@ static void app_photos_run(void *scr)
         self->slideshow = !self->slideshow;
         self->next_slide_ms = now + PHOTO_SLIDE_MS;
         LOG_INF("Slideshow %s", self->slideshow ? "on" : "off");
-        blink();
+        led_flash(PHOTO_BLINK_COLOR, PHOTO_BLINK_MS);
     }
 
     // 連按好幾次 next 時一次跳過去，只解碼最後那一張
@@ -230,7 +211,7 @@ static void app_photos_run(void *scr)
 
     if (step == 0 && self->slideshow && now >= self->next_slide_ms) {
         step = 1;
-        blink();
+        led_flash(PHOTO_BLINK_COLOR, PHOTO_BLINK_MS);
     }
 
     if (step != 0) {
@@ -241,12 +222,6 @@ static void app_photos_run(void *scr)
 
 static void app_photos_exit(void *scr)
 {
-    self->started = false;
-    self->slideshow = false;
-    self->pending_toggle = false;
-    self->pending_step = 0;
-    self->photo_count = 0;
-    self->led_off_ms = 0;
     led_restore();
     photos_free();
 }
