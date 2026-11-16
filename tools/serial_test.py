@@ -55,8 +55,10 @@ read_for(6)
 cmd("", 0.5)
 cmd("app list", 1)
 
-# (app, extra commands while it is open); avoid OK where it saves settings (Level, Light) or starts Timer
+# (app, extra commands while it is open); avoid OK where it saves settings (Level, Light, Clock)
+# or starts Timer
 plan = [
+    ("Clock", ["ui next", "ui prev"]),
     ("Files", ["ui next", "ui next", "ui ok", "ui prev"]),
     ("Anim", ["ui next", "ui ok"]),
     ("Photos", ["ui next", "ui tap", "ui prev"]),
@@ -65,6 +67,7 @@ plan = [
     ("Light", ["ui next", "ui next", "ui prev"]),
     ("Timer", ["ui next", "ui next"]),
     ("SysInfo", ["ui next", "ui next", "ui next"]),
+    ("Network", ["ui next", "ui next", "ui prev"]),
     ("Test", ["ui tap"]),
 ]
 for app, extra in plan:

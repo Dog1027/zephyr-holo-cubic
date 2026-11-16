@@ -88,11 +88,12 @@ config WLAN_INIT_PRIORITY
     help
       Must come after FILE_INIT_PRIORITY: the SSID and PSK are read from the SD card.
 
-config WLAN_WORKQ_STACK_SIZE
-    int "Wi-Fi Work Queue Stack Size"
+config NET_JOB_STACK_SIZE
+    int "Network Work Queue Stack Size"
     default 4096
     help
-      Reads the SD card config and sends the connect request to the driver.
+      Shared queue for blocking network work (net_job.h): the Wi-Fi connect request
+      (reads the SD card config), SNTP, HTTP.
 
 config WLAN_LOG_LEVEL
     int "Wi-Fi Log Level"

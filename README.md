@@ -6,10 +6,11 @@
 
 ## 功能
 
-開機後是橫向輪播的 Menu，可以開啟下列 app：
+開機後是橫向輪播的 Menu，左上角是時間（對時之後才顯示），右上角的 Wi-Fi 圖示上線時是白色。可以開啟下列 app：
 
 | App | 說明 | 需要的 SD 卡內容 |
 |---|---|---|
+| Clock | 時鐘，網路對時；OK 或敲一下切換 12 / 24 小時制（重開機後保留） | `/config.txt`（Wi-Fi，時區） |
 | Files | 瀏覽 SD 卡，資料夾排在前面 | |
 | Anim | 播放 JPEG 序列動畫，循環播放 | `/anim/<名稱>/000.jpg …` |
 | Photos | 相簿，可自動輪播 | `/photo/*.jpg` |
@@ -18,6 +19,7 @@
 | Light | 用 RGB LED 當氣氛燈，顏色重開機後保留 | |
 | Timer | 計時器，翻面朝下會暫停，離開 app 也會繼續計時 | |
 | SysInfo | 運行時間、heap、SD 卡容量、各 thread 的 stack 用量 | |
+| Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | `/config.txt`（Wi-Fi） |
 | Test | 空的 app，給測試新功能用 | |
 
 ## 硬體
@@ -27,7 +29,7 @@
 | ESP32 DevKitC | | 板子：`esp32_devkitc/esp32/procpu` |
 | ST7789V 240x240 螢幕 | SPI3（MIPI DBI，DMA） | SCLK 18、MOSI 23、DC 2、RST 4、背光 5（低電位點亮） |
 | SD 卡 | SPI2 | SCLK 14、MOSI 13、MISO 26、CS 15 |
-| MPU6050 | I2C0，位址 0x68 | SDA 32、SCL 33（需要外部上拉電阻） |
+| MPU6050 | I2C0，位址 0x68 | SDA 32、SCL 33（目前用內建上拉，建議加 4.7 kΩ 外部上拉） |
 | WS2812 RGB LED | I2S0 | DATA 27 |
 
 腳位定義都在 [app.overlay](app.overlay)。
@@ -90,6 +92,14 @@ wlan scan             列出附近的網路
 wlan connect          用 SD 卡上的設定重新連線
 wlan disconnect       斷線，之後不會自動重連，直到 wlan connect
 wlan forget           從 /config.txt 刪掉 SSID / PSK 並斷線
+
+ntp status            目前時間和時區
+ntp sync              立刻重新對時
+
+config list           顯示 /config.txt（密碼會遮住）
+config get KEY        讀一個值
+config set KEY VALUE  設定一個值（值有空白要加引號）
+config unset KEY      刪掉一個 key
 ```
 
 `ui remote` 進入遙控模式後，按鍵會直接控制裝置：
@@ -129,25 +139,33 @@ just gif2jpg cat.gif out/cat 120x120
     001.jpg
     delay.txt           每格毫秒數（選用，預設 100）
 /lots.txt               抽籤清單，一行一項（字型只支援英數字）
-/config.txt             設定檔（Wi-Fi），格式見下面
+/config.txt             設定檔（Wi-Fi、時區），格式見下面
 ```
 
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
 
-### Wi-Fi 設定
+### 設定檔 /config.txt
 
-開機時從 SD 卡的 `/config.txt` 讀取 Wi-Fi 設定並連線，可以在電腦上直接編輯，也可以在 shell 用 `wlan set`：
+開機時從 SD 卡的 `/config.txt` 讀取設定，可以在電腦上直接編輯，也可以在 shell 用 `wlan set` 或 `config set`：
 
 ```
 # HoloCubic 設定
 wifi_ssid=MyNetwork
 wifi_psk=password
+tz=+8
 ```
 
+| Key | 說明 | 預設 |
+|---|---|---|
+| `wifi_ssid` | Wi-Fi 名稱，沒有就不連網路 | |
+| `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元（WPA2-PSK）；開放網路不要寫 | |
+| `tz` | 時區（UTC 偏移），例如 `+8`、`-5`、`+5:30`；打開 Clock 時重新讀取 | `+8` |
+| `ntp_server` | 對時用的 NTP server | `pool.ntp.org` |
+
 - 一行一個 `key=value`，key 和值前後的空白會被忽略；`#` 開頭的行是註解。
-- 開放網路不要寫 `wifi_psk`；有密碼時要 8 到 64 個字元（WPA2-PSK）。
-- `wlan set` 改設定時會保留其他行和註解，檔案上限 1 KB。
-- 斷線或連不上時每 10 秒重試一次，只在第一次失敗時記 log。只支援 2.4 GHz。
+- 用指令修改時會保留其他行和註解，檔案上限 1 KB。
+- Wi-Fi 斷線或連不上時每 10 秒重試一次，只在第一次失敗時記 log。只支援 2.4 GHz。
+- 連上網路後自動對時，之後每 6 小時再對一次；失敗時 15 秒後重試。
 
 ## 新增 app
 
@@ -208,7 +226,10 @@ src/
   prefs.c               斷電保存的設定（settings / NVS）
   file.c                SD 卡掛載
   sdconf.c              SD 卡上的設定檔 /config.txt（key=value）
-  wlan.c                Wi-Fi 連線與 wlan 指令
+  wlan.c                Wi-Fi 連線、掃描與 wlan 指令
+  net_job.c             網路工作共用的背景 work queue
+  net_time.c            SNTP 對時、時區與 ntp 指令
+  i2c_pullup.c          I2C 腳位的 RTC 內建上拉與開機時的 bus recovery
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
   apps/bg/app_menu.c    Menu
   apps/fg/              各個 app
@@ -222,8 +243,10 @@ tools/                  圖片與動畫轉檔工具
 - **畫面鏡像**：`app.overlay` 的 `mdac = <0x40>` 是左右鏡像，給透過稜鏡觀看用。如果看到的畫面上下顛倒，改用 `0x80` 並把 `y-offset` 設成 `80`；直接看螢幕則用 `0x00`。傾斜方向相反時用 `CONFIG_INPUT_ROLL_INVERT` / `CONFIG_INPUT_PITCH_INVERT`。
 - **只能一條 SPI 開 DMA**：兩條 SPI 共用 ESP32 的 DMA 時脈，Zephyr 驅動會讓第二條初始化失敗（log 出現 "Could not enable DMA clock"），所以只有螢幕的 SPI3 開 DMA。
 - **SPI 速度**：SD 卡的 MISO 在 GPIO 26，要經過 GPIO 矩陣，超過 20 MHz 讀不到正確資料。螢幕目前 30 MHz。
-- **I2C 維持 100 kHz**：腳位沒有開內建上拉，400 kHz 時 MPU6050 會初始化失敗。
-- **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩約 1.5 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
+- **I2C 維持 100 kHz**：板子上沒有外部上拉電阻，靠 ESP32 約 45 kΩ 的內建上拉（`src/i2c_pullup.c`），400 kHz 時 MPU6050 會初始化失敗。GPIO32/33 是 RTC pad，pinctrl 的 `bias-pull-up` 對它們沒有作用，上拉要設在 RTC_IO。
+- **重置後 IMU 讀不到**：ESP32 重置時 MPU6050 不會斷電，如果剛好卡在 I2C 讀取途中，它會一直拉著 SDA。開機時在 sensor 初始化之前先做一次 bus recovery 解決。
+- **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。
+- **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩不到 1 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
 - **不要在 `SYS_INIT` 裡繪圖**：開了 LVGL flush thread 後，它要等所有 `SYS_INIT` 結束才會啟動，在那之前繪圖會讓開機卡死。第一次繪圖在 `app_thread` 裡的 `gui_start()`。
 - **LVGL 記憶體**：Menu 會一直留在背景，加上前景 app 和切換動畫，32 KB 不夠，目前設為 64 KB。可以用 SysInfo 看實際用量。
 - **字型**：內建的 Montserrat 不含中文。

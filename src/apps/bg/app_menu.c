@@ -1,6 +1,8 @@
 #include "bg_app.h"
 #include "app_list.h"
 #include "ui.h"
+#include "net_time.h"
+#include "wlan.h"
 
 APP_BG_REGISTER(Menu, app_menu_init, app_menu_run);
 
@@ -21,6 +23,43 @@ static lv_style_t style_dot_active;
 
 static lv_obj_t *name_label;
 static lv_obj_t *dots;
+// 狀態列：左上角時間（對時之後才有），右上角 Wi-Fi（上線是白色，沒上線是暗色）
+static lv_obj_t *clock_label;
+static lv_obj_t *wifi_label;
+static int64_t status_key = -1;
+
+static lv_obj_t *status_label_create(lv_obj_t *scr, lv_align_t align, int32_t x)
+{
+    lv_obj_t *label = lv_label_create(scr);
+    lv_label_set_text(label, "");
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_align(label, align, x, 14);
+    return label;
+}
+
+static void status_update(void)
+{
+    struct tm tm;
+    bool synced = net_time_now(&tm);
+    bool online = wlan_is_online();
+    // 一分鐘或狀態改變才重畫
+    int64_t key = (synced ? tm.tm_hour * 60 + tm.tm_min : -2) * 2 + online;
+
+    if (key == status_key) {
+        return;
+    }
+    status_key = key;
+    if (synced) {
+        lv_label_set_text_fmt(clock_label, "%02d:%02d", tm.tm_hour, tm.tm_min);
+    }
+    else {
+        lv_label_set_text(clock_label, "");
+    }
+    lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_color(wifi_label, online ? lv_color_white() : lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_opa(wifi_label, online ? LV_OPA_COVER : LV_OPA_50, 0);
+}
 
 static lv_color_t app_accent(int index)
 {
@@ -128,6 +167,11 @@ static void app_menu_init(void *scr)
     lv_obj_set_style_text_letter_space(title, 4, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 14);
 
+    clock_label = status_label_create(scr, LV_ALIGN_TOP_LEFT, 18);
+    wifi_label = status_label_create(scr, LV_ALIGN_TOP_RIGHT, -18);
+    status_key = -1;
+    status_update();
+
     // 橫向輪播：被選到的圖示會自動捲到正中間
     lv_obj_t *carousel = lv_obj_create(scr);
     lv_obj_remove_style_all(carousel);
@@ -173,4 +217,5 @@ static void app_menu_init(void *scr)
 
 static void app_menu_run(void *scr)
 {
+    status_update();
 }
