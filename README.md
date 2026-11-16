@@ -174,38 +174,53 @@ tz=+8
 
 ## 新增 app
 
-1. 在 `src/apps/fg/` 新增檔案，例如 `app_clock.c`：
+1. 在 `src/apps/fg/` 新增檔案，例如 `app_uptime.c`：
 
    ```c
    #include "fg_app.h"
    #include "ui.h"
 
-   APP_FG_REGISTER(Clock, LV_SYMBOL_BELL, app_clock_init, app_clock_run, app_clock_exit, 20);
+   // app 開著時的狀態，放在共用的 app_state_mem，每次打開前清成 0
+   typedef struct {
+       lv_obj_t *label;
+       uint32_t shown;
+   } self_t;
 
-   static lv_obj_t *label;
+   APP_FG_REGISTER(Uptime, LV_SYMBOL_BELL, app_uptime_init, app_uptime_run, app_uptime_exit, 20,
+                   self_t);
 
-   static void app_clock_init(void *scr)
+   static void app_uptime_init(void *scr)
    {
        ui_screen_init(scr);
-       label = lv_label_create(scr);
-       lv_obj_center(label);
+       self->label = lv_label_create(scr);
+       lv_obj_center(self->label);
+       self->shown = UINT32_MAX;   // 0 以外的初始值要自己設
    }
 
-   static void app_clock_run(void *scr)
+   static void app_uptime_run(void *scr)
    {
-       lv_label_set_text_fmt(label, "%u", k_uptime_get_32() / 1000);
+       uint32_t sec = k_uptime_get_32() / 1000;
+       if (sec != self->shown) {
+           self->shown = sec;
+           lv_label_set_text_fmt(self->label, "%u", sec);
+       }
    }
 
-   static void app_clock_exit(void *scr)
+   static void app_uptime_exit(void *scr)
    {
    }
    ```
 
-2. 在 [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt) 加上 `target_sources(app PRIVATE fg/app_clock.c)`。
+2. 在 [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt) 加上 `target_sources(app PRIVATE fg/app_uptime.c)`。
 
 規則：
 
-- **註冊參數**：名稱、Menu 圖示（`LV_SYMBOL_*`）、三個 callback、priority。priority 決定在 Menu 的順序，不能是 0（保留給 Menu），每個 app 用不同的值。
+- **註冊參數**：名稱、Menu 圖示（`LV_SYMBOL_*`）、三個 callback、priority、state 型別。priority 決定在 Menu 的順序，不能是 0（保留給 Menu），每個 app 用不同的值。
+- **狀態放在 `self_t`**：app 開著時要記住的東西（LVGL 物件、畫面狀態、小 buffer）都放進 `self_t`，用 `self->` 存取，不要寫成 `static` 變數。所有前景 app 共用同一塊記憶體（`CONFIG_APP_STATE_SIZE`，放在 DRAM region 1），框架在 `init` 之前把它清成 0，app 關閉後就交給下一個 app。沒有狀態的 app 用 `app_no_state_t`。
+  - 0 以外的初始值要在 `init` 裡設定。
+  - `self_t` 放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。大 buffer（超過幾百 bytes、只在某個函式裡用）放 stack，不要放 `self_t`。
+  - `exit` 之後不能再用 `self`：不能讓 timer、work 或其他 thread 拿著指向它的指標。
+  - **要在 app 關閉後保留的東西才用 `static`**，並加註解說明原因。目前只有兩種：離開 app 還要繼續運作的狀態（Timer 的計時），以及只初始化一次的 `lv_style_t`（Dice、Light、Timer）。
 - **`init`**：每次開啟 app 都會呼叫，畫面已經清空，物件要在這裡重新建立。
 - **`run`**：每一幀呼叫一次（間隔不固定，最長約 50 ms），不能長時間阻塞。
 - **`exit`**：離開時呼叫，用來釋放自己配置的資源；畫面上的物件由框架刪除。

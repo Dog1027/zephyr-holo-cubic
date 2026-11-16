@@ -7,8 +7,6 @@
 #include <zephyr/random/random.h>
 #include <string.h>
 
-APP_FG_REGISTER(Dice, LV_SYMBOL_SHUFFLE, app_dice_init, app_dice_run, app_dice_exit, 10);
-
 // 抽籤清單：每行一個選項，只能用英數字 (字型沒有中文)
 #define LOTS_FILE           "/0:/lots.txt"
 #define LOTS_MAX            32
@@ -37,20 +35,26 @@ static const uint8_t pip_mask[7] = {
     BIT(0) | BIT(1) | BIT(2) | BIT(4) | BIT(5) | BIT(6),
 };
 
+// 常駐（不放 self）：style 只在第一次打開時初始化，之後每次都沿用
 static lv_style_t style_tab;
 static lv_style_t style_tab_focused;
 static bool styles_inited;
 
-static lv_obj_t *dice;
-static lv_obj_t *pips[7];
-static lv_obj_t *lot_label;
-static char lots[LOTS_MAX][LOTS_LEN + 1];
-static int lots_count;
-static int mode;
-static bool rolling;
-static int64_t roll_end_ms;
-static int64_t next_step_ms;
-static int64_t led_off_ms;
+// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
+typedef struct {
+    lv_obj_t *dice;
+    lv_obj_t *pips[7];
+    lv_obj_t *lot_label;
+    char lots[LOTS_MAX][LOTS_LEN + 1];
+    int lots_count;
+    int mode;
+    bool rolling;
+    int64_t roll_end_ms;
+    int64_t next_step_ms;
+    int64_t led_off_ms;
+} self_t;
+
+APP_FG_REGISTER(Dice, LV_SYMBOL_SHUFFLE, app_dice_init, app_dice_run, app_dice_exit, 10, self_t);
 
 static void styles_init(void)
 {
@@ -77,10 +81,11 @@ static void styles_init(void)
 
 static void lots_load(void)
 {
-    static char buf[LOTS_MAX * (LOTS_LEN + 2)];
+    // 只在讀檔時用，放 stack 不放 self（app_thread 的 stack 有餘裕）
+    char buf[LOTS_MAX * (LOTS_LEN + 2)];
     struct fs_file_t file;
 
-    lots_count = 0;
+    self->lots_count = 0;
     fs_file_t_init(&file);
     if (!file_exists(LOTS_FILE) || fs_open(&file, LOTS_FILE, FS_O_READ) < 0) {
         return;
@@ -92,11 +97,11 @@ static void lots_load(void)
     }
     buf[len] = '\0';
 
-    for (char *line = strtok(buf, "\r\n"); line != NULL && lots_count < LOTS_MAX; line = strtok(NULL, "\r\n")) {
+    for (char *line = strtok(buf, "\r\n"); line != NULL && self->lots_count < LOTS_MAX; line = strtok(NULL, "\r\n")) {
         if (line[0] != '\0') {
-            strncpy(lots[lots_count], line, LOTS_LEN);
-            lots[lots_count][LOTS_LEN] = '\0';
-            lots_count++;
+            strncpy(self->lots[self->lots_count], line, LOTS_LEN);
+            self->lots[self->lots_count][LOTS_LEN] = '\0';
+            self->lots_count++;
         }
     }
 }
@@ -105,41 +110,41 @@ static void dice_show(int value)
 {
     for (int i = 0; i < 7; i++) {
         if (pip_mask[value] & BIT(i)) {
-            lv_obj_set_hidden(pips[i], false);
+            lv_obj_set_hidden(self->pips[i], false);
         }
         else {
-            lv_obj_set_hidden(pips[i], true);
+            lv_obj_set_hidden(self->pips[i], true);
         }
     }
 }
 
 static void roll_step(void)
 {
-    if (mode == MODE_DICE) {
+    if (self->mode == MODE_DICE) {
         dice_show(1 + sys_rand32_get() % 6);
     }
-    else if (lots_count > 0) {
-        lv_label_set_text(lot_label, lots[sys_rand32_get() % lots_count]);
+    else if (self->lots_count > 0) {
+        lv_label_set_text(self->lot_label, self->lots[sys_rand32_get() % self->lots_count]);
     }
 }
 
 static void mode_set(int new_mode)
 {
-    mode = new_mode;
-    if (rolling) {
+    self->mode = new_mode;
+    if (self->rolling) {
         // 擲到一半切換分頁，LED 不能停在滾動中的隨機顏色
-        rolling = false;
-        led_off_ms = 0;
+        self->rolling = false;
+        self->led_off_ms = 0;
         led_restore();
     }
-    if (mode == MODE_DICE) {
-        lv_obj_set_hidden(dice, false);
-        lv_obj_set_hidden(lot_label, true);
+    if (self->mode == MODE_DICE) {
+        lv_obj_set_hidden(self->dice, false);
+        lv_obj_set_hidden(self->lot_label, true);
     }
     else {
-        lv_obj_set_hidden(dice, true);
-        lv_obj_set_hidden(lot_label, false);
-        lv_label_set_text(lot_label, lots_count > 0 ? "?" : "Put one item per line\nin /lots.txt");
+        lv_obj_set_hidden(self->dice, true);
+        lv_obj_set_hidden(self->lot_label, false);
+        lv_label_set_text(self->lot_label, self->lots_count > 0 ? "?" : "Put one item per line\nin /lots.txt");
     }
 }
 
@@ -151,13 +156,13 @@ static void tab_focused_cb(lv_event_t *e)
 // 搖晃會連續觸發敲擊，每次都重新計時，停手後才停下來
 static void tab_clicked_cb(lv_event_t *e)
 {
-    if (mode == MODE_LOTS && lots_count == 0) {
+    if (self->mode == MODE_LOTS && self->lots_count == 0) {
         return;
     }
     int64_t now = k_uptime_get();
-    rolling = true;
-    roll_end_ms = now + ROLL_MS;
-    next_step_ms = now;
+    self->rolling = true;
+    self->roll_end_ms = now + ROLL_MS;
+    self->next_step_ms = now;
 }
 
 // 敲擊 / 搖晃是擲骰，不是切換分頁；next / prev 切分頁，ok 擲
@@ -194,34 +199,34 @@ static void app_dice_init(void *scr)
     ui_screen_init(scr);
     lots_load();
 
-    dice = lv_obj_create(scr);
-    lv_obj_remove_style_all(dice);
-    lv_obj_set_size(dice, DICE_SIZE, DICE_SIZE);
-    lv_obj_set_style_radius(dice, 22, 0);
-    lv_obj_set_style_bg_color(dice, lv_color_white(), 0);
-    lv_obj_set_style_bg_opa(dice, LV_OPA_COVER, 0);
-    lv_obj_align(dice, LV_ALIGN_CENTER, 0, 6);
-    lv_obj_set_scrollable(dice, false);
-    lv_obj_set_clickable(dice, false);
+    self->dice = lv_obj_create(scr);
+    lv_obj_remove_style_all(self->dice);
+    lv_obj_set_size(self->dice, DICE_SIZE, DICE_SIZE);
+    lv_obj_set_style_radius(self->dice, 22, 0);
+    lv_obj_set_style_bg_color(self->dice, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(self->dice, LV_OPA_COVER, 0);
+    lv_obj_align(self->dice, LV_ALIGN_CENTER, 0, 6);
+    lv_obj_set_scrollable(self->dice, false);
+    lv_obj_set_clickable(self->dice, false);
 
     for (int i = 0; i < 7; i++) {
-        pips[i] = lv_obj_create(dice);
-        lv_obj_remove_style_all(pips[i]);
-        lv_obj_set_size(pips[i], DICE_PIP_SIZE, DICE_PIP_SIZE);
-        lv_obj_set_style_radius(pips[i], LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(pips[i], lv_color_hex(UI_BG_COLOR), 0);
-        lv_obj_set_style_bg_opa(pips[i], LV_OPA_COVER, 0);
-        lv_obj_align(pips[i], LV_ALIGN_CENTER, pip_pos[i][0] * DICE_PIP_OFFSET, pip_pos[i][1] * DICE_PIP_OFFSET);
-        lv_obj_set_clickable(pips[i], false);
+        self->pips[i] = lv_obj_create(self->dice);
+        lv_obj_remove_style_all(self->pips[i]);
+        lv_obj_set_size(self->pips[i], DICE_PIP_SIZE, DICE_PIP_SIZE);
+        lv_obj_set_style_radius(self->pips[i], LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(self->pips[i], lv_color_hex(UI_BG_COLOR), 0);
+        lv_obj_set_style_bg_opa(self->pips[i], LV_OPA_COVER, 0);
+        lv_obj_align(self->pips[i], LV_ALIGN_CENTER, pip_pos[i][0] * DICE_PIP_OFFSET, pip_pos[i][1] * DICE_PIP_OFFSET);
+        lv_obj_set_clickable(self->pips[i], false);
     }
     dice_show(6);
 
-    lot_label = lv_label_create(scr);
-    lv_obj_set_width(lot_label, 200);
-    lv_label_set_long_mode(lot_label, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_style_text_align(lot_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(lot_label, lv_color_white(), 0);
-    lv_obj_align(lot_label, LV_ALIGN_CENTER, 0, 6);
+    self->lot_label = lv_label_create(scr);
+    lv_obj_set_width(self->lot_label, 200);
+    lv_label_set_long_mode(self->lot_label, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_style_text_align(self->lot_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(self->lot_label, lv_color_white(), 0);
+    lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, 6);
 
     lv_obj_t *hint = lv_label_create(scr);
     lv_label_set_text(hint, "Tap or shake");
@@ -237,8 +242,8 @@ static void app_dice_init(void *scr)
     lv_obj_set_flex_align(tabs, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(tabs, 12, 0);
 
-    rolling = false;
-    led_off_ms = 0;
+    self->rolling = false;
+    self->led_off_ms = 0;
     // 第一個 tab 加入 group 時會被 focus，觸發 mode_set，所以內容要先建好
     tab_create(tabs, "DICE", MODE_DICE);
     tab_create(tabs, "LOTS", MODE_LOTS);
@@ -249,26 +254,26 @@ static void app_dice_run(void *scr)
 {
     int64_t now = k_uptime_get();
 
-    if (led_off_ms != 0 && now >= led_off_ms) {
-        led_off_ms = 0;
+    if (self->led_off_ms != 0 && now >= self->led_off_ms) {
+        self->led_off_ms = 0;
         led_restore();
     }
 
-    if (!rolling || now < next_step_ms) {
+    if (!self->rolling || now < self->next_step_ms) {
         return;
     }
 
     roll_step();
-    if (now < roll_end_ms) {
+    if (now < self->roll_end_ms) {
         // 滾動中 LED 隨機變色
         led_set_hex(sys_rand32_get() & 0xffffff);
-        next_step_ms = now + ROLL_STEP_MS;
+        self->next_step_ms = now + ROLL_STEP_MS;
         return;
     }
 
-    rolling = false;
+    self->rolling = false;
     led_set_hex(DICE_ACCENT_COLOR);
-    led_off_ms = now + LED_HOLD_MS;
+    self->led_off_ms = now + LED_HOLD_MS;
 }
 
 static void app_dice_exit(void *scr)

@@ -4,18 +4,21 @@
 #include <string.h>
 #include <stdio.h>
 
-APP_FG_REGISTER(Files, LV_SYMBOL_DIRECTORY, app_files_init, app_files_run, app_files_exit, 6);
-
 #define FILES_ROOT          "/0:"
 #define FILES_PATH_MAX      128
 #define FILES_MAX_ENTRIES   24  // 每個 item 都佔 LVGL 記憶體，太多會耗盡 pool
 #define FILES_ACCENT_COLOR  0xf5a623
 
-static lv_obj_t *path_label;
-static lv_obj_t *list;
-static char cur_path[FILES_PATH_MAX];
-static char pending_path[FILES_PATH_MAX];
-static bool pending;
+// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
+typedef struct {
+    lv_obj_t *path_label;
+    lv_obj_t *list;
+    char cur_path[FILES_PATH_MAX];
+    char pending_path[FILES_PATH_MAX];
+    bool pending;
+} self_t;
+
+APP_FG_REGISTER(Files, LV_SYMBOL_DIRECTORY, app_files_init, app_files_run, app_files_exit, 6, self_t);
 
 static void format_size(char *buf, size_t len, size_t size)
 {
@@ -36,26 +39,29 @@ static void item_clicked_cb(lv_event_t *e)
 
     // 不能在 item 自己的事件裡刪掉列表，交給 run 在下一幀重建
     if (name == NULL) {
-        strcpy(pending_path, cur_path);
-        char *slash = strrchr(pending_path, '/');
-        if (slash != NULL && slash != pending_path) {
+        strcpy(self->pending_path, self->cur_path);
+        char *slash = strrchr(self->pending_path, '/');
+        if (slash != NULL && slash != self->pending_path) {
             *slash = '\0';
         }
     }
     else {
-        int len = snprintf(pending_path, sizeof(pending_path), "%s/%s", cur_path, name);
-        if (len < 0 || len >= (int)sizeof(pending_path)) {
-            LOG_WRN("Path too long: %s/%s", cur_path, name);
+        // 先組在 stack 上：compiler 看不出 self 的兩個欄位不重疊（-Wrestrict）
+        char path[FILES_PATH_MAX];
+        int len = snprintf(path, sizeof(path), "%s/%s", self->cur_path, name);
+        if (len < 0 || len >= (int)sizeof(path)) {
+            LOG_WRN("Path too long: %s/%s", self->cur_path, name);
             return;
         }
+        strcpy(self->pending_path, path);
     }
-    pending = true;
+    self->pending = true;
 }
 
 // name 為 NULL 表示「上一層」
 static void dir_item_create(const char *icon, const char *name)
 {
-    lv_obj_t *item = ui_list_item(list, icon, name ? name : "..", NULL, lv_color_hex(FILES_ACCENT_COLOR));
+    lv_obj_t *item = ui_list_item(self->list, icon, name ? name : "..", NULL, lv_color_hex(FILES_ACCENT_COLOR));
 
     // 另存一份完整名稱，label 的文字太長時會被改成 "..."
     const char *text = name ? ui_obj_strdup(item, name) : NULL;
@@ -68,15 +74,15 @@ static void dir_item_create(const char *icon, const char *name)
 // 讀一次目錄，只建立目錄 (want_dir) 或只建立檔案，用兩次呼叫讓目錄排在前面
 static int list_entries(bool want_dir, int count)
 {
-    static struct fs_dirent entry;
+    struct fs_dirent entry;
     struct fs_dir_t dir;
     char size[16];
     int ret;
 
     fs_dir_t_init(&dir);
-    ret = fs_opendir(&dir, cur_path);
+    ret = fs_opendir(&dir, self->cur_path);
     if (ret < 0) {
-        LOG_ERR("Failed to open %s (%d)", cur_path, ret);
+        LOG_ERR("Failed to open %s (%d)", self->cur_path, ret);
         return ret;
     }
 
@@ -96,7 +102,7 @@ static int list_entries(bool want_dir, int count)
         }
         else {
             format_size(size, sizeof(size), entry.size);
-            ui_list_item(list, LV_SYMBOL_FILE, entry.name, size, lv_color_hex(FILES_ACCENT_COLOR));
+            ui_list_item(self->list, LV_SYMBOL_FILE, entry.name, size, lv_color_hex(FILES_ACCENT_COLOR));
         }
         count++;
     }
@@ -107,10 +113,10 @@ static int list_entries(bool want_dir, int count)
 
 static void list_refresh(void)
 {
-    lv_obj_clean(list);
-    lv_label_set_text(path_label, cur_path);
+    lv_obj_clean(self->list);
+    lv_label_set_text(self->path_label, self->cur_path);
 
-    if (strcmp(cur_path, FILES_ROOT) != 0) {
+    if (strcmp(self->cur_path, FILES_ROOT) != 0) {
         dir_item_create(LV_SYMBOL_UP, NULL);
     }
 
@@ -120,32 +126,32 @@ static void list_refresh(void)
     }
 
     if (count < 0) {
-        ui_list_message(list, "Cannot read SD card");
+        ui_list_message(self->list, "Cannot read SD card");
     }
     else if (count == 0) {
-        ui_list_message(list, "Empty folder");
+        ui_list_message(self->list, "Empty folder");
     }
     else if (count >= FILES_MAX_ENTRIES) {
-        ui_list_message(list, "...");
+        ui_list_message(self->list, "...");
     }
 }
 
 static void app_files_init(void *scr)
 {
     ui_screen_init(scr);
-    path_label = ui_title(scr, FILES_ROOT);
-    list = ui_list_create(scr);
+    self->path_label = ui_title(scr, FILES_ROOT);
+    self->list = ui_list_create(scr);
 
-    strcpy(cur_path, FILES_ROOT);
-    pending = false;
+    strcpy(self->cur_path, FILES_ROOT);
+    self->pending = false;
     list_refresh();
 }
 
 static void app_files_run(void *scr)
 {
-    if (pending) {
-        pending = false;
-        strcpy(cur_path, pending_path);
+    if (self->pending) {
+        self->pending = false;
+        strcpy(self->cur_path, self->pending_path);
         list_refresh();
     }
 }

@@ -36,6 +36,13 @@ config APP_THREAD_STACK_SIZE
       LVGL rendering, the apps and JPEG decoding run on this thread.
       Check the real usage in the SysInfo app before shrinking it.
 
+config APP_STATE_SIZE
+    int "Foreground app state size"
+    default 1536
+    help
+      Memory shared by the foreground apps for their state (one app is open at a time).
+      Every app checks at build time that its state struct fits.
+
 config APP_THREAD_SHOW_FPS
     bool "Show FPS"
     default n

@@ -10,8 +10,6 @@
 #include <string.h>
 #include <stdio.h>
 
-APP_FG_REGISTER(SysInfo, LV_SYMBOL_LIST, app_sysinfo_init, app_sysinfo_run, app_sysinfo_exit, 13);
-
 #define SYSINFO_ACCENT_COLOR    0x9b6cf2
 #define SYSINFO_REFRESH_MS      500
 #define SYSINFO_SD_REFRESH_MS   5000
@@ -36,12 +34,17 @@ typedef struct {
     char text[SYSINFO_TEXT_MAX];
 } sysinfo_row_t;
 
-static sysinfo_row_t rows[ROW_FIXED_COUNT];
-static sysinfo_row_t thread_rows[SYSINFO_MAX_THREADS];
-static k_tid_t threads[SYSINFO_MAX_THREADS];
-static int thread_count;
-static int64_t last_refresh;
-static int64_t last_sd_refresh;
+// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
+typedef struct {
+    sysinfo_row_t rows[ROW_FIXED_COUNT];
+    sysinfo_row_t thread_rows[SYSINFO_MAX_THREADS];
+    k_tid_t threads[SYSINFO_MAX_THREADS];
+    int thread_count;
+    int64_t last_refresh;
+    int64_t last_sd_refresh;
+} self_t;
+
+APP_FG_REGISTER(SysInfo, LV_SYMBOL_LIST, app_sysinfo_init, app_sysinfo_run, app_sysinfo_exit, 13, self_t);
 
 // 只有文字變了才更新 label，避免每次都重繪
 static void row_set(sysinfo_row_t *row, const char *fmt, ...)
@@ -83,8 +86,8 @@ static void row_set_angle(sysinfo_row_t *row, float deg)
 
 static void thread_collect_cb(const struct k_thread *thread, void *user_data)
 {
-    if (thread_count < SYSINFO_MAX_THREADS) {
-        threads[thread_count++] = (k_tid_t)thread;
+    if (self->thread_count < SYSINFO_MAX_THREADS) {
+        self->threads[self->thread_count++] = (k_tid_t)thread;
     }
 }
 
@@ -95,11 +98,11 @@ static void update_uptime(void)
 
     sec %= 86400;
     if (days > 0) {
-        row_set(&rows[ROW_UPTIME], "%ud %02u:%02u:%02u", (unsigned int)days, (unsigned int)(sec / 3600),
+        row_set(&self->rows[ROW_UPTIME], "%ud %02u:%02u:%02u", (unsigned int)days, (unsigned int)(sec / 3600),
                 (unsigned int)(sec / 60 % 60), (unsigned int)(sec % 60));
     }
     else {
-        row_set(&rows[ROW_UPTIME], "%u:%02u:%02u", (unsigned int)(sec / 3600), (unsigned int)(sec / 60 % 60),
+        row_set(&self->rows[ROW_UPTIME], "%u:%02u:%02u", (unsigned int)(sec / 3600), (unsigned int)(sec / 60 % 60),
                 (unsigned int)(sec % 60));
     }
 }
@@ -117,28 +120,28 @@ static void update_sd(void)
     struct fs_statvfs st;
 
     if (fs_statvfs(SYSINFO_SD_PATH, &st) < 0 || st.f_blocks == 0) {
-        row_set(&rows[ROW_SD], "No card");
+        row_set(&self->rows[ROW_SD], "No card");
         return;
     }
 
     uint64_t total = (uint64_t)st.f_frsize * st.f_blocks;
     uint64_t used = (uint64_t)st.f_frsize * (st.f_blocks - st.f_bfree);
-    row_set(&rows[ROW_SD], "%u / %u MB", (unsigned int)(used >> 20), (unsigned int)(total >> 20));
+    row_set(&self->rows[ROW_SD], "%u / %u MB", (unsigned int)(used >> 20), (unsigned int)(total >> 20));
 }
 
 static void update_threads(void)
 {
-    for (int i = 0; i < thread_count; i++) {
+    for (int i = 0; i < self->thread_count; i++) {
         size_t unused;
 
         // 執行緒結束後 stack 可能已無效，查詢失敗就顯示 "-"
-        if (k_thread_stack_space_get(threads[i], &unused) != 0) {
-            row_set(&thread_rows[i], "-");
+        if (k_thread_stack_space_get(self->threads[i], &unused) != 0) {
+            row_set(&self->thread_rows[i], "-");
             continue;
         }
 
-        size_t size = threads[i]->stack_info.size;
-        row_set(&thread_rows[i], "%u / %u", (unsigned int)(size - unused), (unsigned int)size);
+        size_t size = self->threads[i]->stack_info.size;
+        row_set(&self->thread_rows[i], "%u / %u", (unsigned int)(size - unused), (unsigned int)size);
     }
 }
 
@@ -150,18 +153,18 @@ static void refresh(bool sd)
     update_uptime();
 
     sys_heap_runtime_stats_get(&_system_heap.heap, &stats);
-    update_heap(&rows[ROW_SYS_HEAP], &stats);
+    update_heap(&self->rows[ROW_SYS_HEAP], &stats);
 
     lvgl_heap_stats(&stats);
-    update_heap(&rows[ROW_LVGL_HEAP], &stats);
+    update_heap(&self->rows[ROW_LVGL_HEAP], &stats);
 
     if (sd) {
         update_sd();
     }
 
     input_get(&angle);
-    row_set_angle(&rows[ROW_ROLL], angle.roll);
-    row_set_angle(&rows[ROW_PITCH], angle.pitch);
+    row_set_angle(&self->rows[ROW_ROLL], angle.roll);
+    row_set_angle(&self->rows[ROW_PITCH], angle.pitch);
 
     update_threads();
 }
@@ -172,55 +175,52 @@ static void app_sysinfo_init(void *scr)
     ui_title(scr, "System");
     lv_obj_t *list = ui_list_create(scr);
 
-    row_create(list, LV_SYMBOL_REFRESH, "Uptime", &rows[ROW_UPTIME]);
-    row_create(list, LV_SYMBOL_DRIVE, "Sys heap", &rows[ROW_SYS_HEAP]);
-    row_create(list, LV_SYMBOL_IMAGE, "LVGL heap", &rows[ROW_LVGL_HEAP]);
-    row_create(list, LV_SYMBOL_SD_CARD, "SD card", &rows[ROW_SD]);
-    row_create(list, LV_SYMBOL_GPS, "Roll", &rows[ROW_ROLL]);
-    row_create(list, LV_SYMBOL_GPS, "Pitch", &rows[ROW_PITCH]);
+    row_create(list, LV_SYMBOL_REFRESH, "Uptime", &self->rows[ROW_UPTIME]);
+    row_create(list, LV_SYMBOL_DRIVE, "Sys heap", &self->rows[ROW_SYS_HEAP]);
+    row_create(list, LV_SYMBOL_IMAGE, "LVGL heap", &self->rows[ROW_LVGL_HEAP]);
+    row_create(list, LV_SYMBOL_SD_CARD, "SD card", &self->rows[ROW_SD]);
+    row_create(list, LV_SYMBOL_GPS, "Roll", &self->rows[ROW_ROLL]);
+    row_create(list, LV_SYMBOL_GPS, "Pitch", &self->rows[ROW_PITCH]);
 
     // 先收集執行緒再建立列，不能在 foreach callback 裡呼叫 LVGL
-    thread_count = 0;
+    self->thread_count = 0;
     k_thread_foreach_unlocked(thread_collect_cb, NULL);
-    for (int i = 0; i < thread_count; i++) {
-        const char *name = k_thread_name_get(threads[i]);
+    for (int i = 0; i < self->thread_count; i++) {
+        const char *name = k_thread_name_get(self->threads[i]);
         char fallback[16];
 
         if (name == NULL || name[0] == '\0') {
-            snprintf(fallback, sizeof(fallback), "%p", (void *)threads[i]);
+            snprintf(fallback, sizeof(fallback), "%p", (void *)self->threads[i]);
             name = fallback;
         }
-        row_create(list, LV_SYMBOL_SETTINGS, name, &thread_rows[i]);
+        row_create(list, LV_SYMBOL_SETTINGS, name, &self->thread_rows[i]);
     }
 
     ui_list_item(list, LV_SYMBOL_HOME, "Board", CONFIG_BOARD, lv_color_hex(SYSINFO_ACCENT_COLOR));
     ui_list_item(list, LV_SYMBOL_EYE_OPEN, "Zephyr", KERNEL_VERSION_STRING, lv_color_hex(SYSINFO_ACCENT_COLOR));
 
     refresh(true);
-    last_refresh = k_uptime_get();
-    last_sd_refresh = last_refresh;
+    self->last_refresh = k_uptime_get();
+    self->last_sd_refresh = self->last_refresh;
 }
 
 static void app_sysinfo_run(void *scr)
 {
     int64_t now = k_uptime_get();
 
-    if (now - last_refresh < SYSINFO_REFRESH_MS) {
+    if (now - self->last_refresh < SYSINFO_REFRESH_MS) {
         return;
     }
-    last_refresh = now;
+    self->last_refresh = now;
 
-    bool sd = now - last_sd_refresh >= SYSINFO_SD_REFRESH_MS;
+    bool sd = now - self->last_sd_refresh >= SYSINFO_SD_REFRESH_MS;
     if (sd) {
-        last_sd_refresh = now;
+        self->last_sd_refresh = now;
     }
     refresh(sd);
 }
 
 static void app_sysinfo_exit(void *scr)
 {
-    // LVGL 物件由框架刪除，這裡只清掉指標
-    memset(rows, 0, sizeof(rows));
-    memset(thread_rows, 0, sizeof(thread_rows));
-    thread_count = 0;
+    // LVGL 物件由框架刪除
 }

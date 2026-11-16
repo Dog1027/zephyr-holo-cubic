@@ -2,7 +2,7 @@
 #include "ui.h"
 
 // Scratch app for trying things out, kept last in the menu
-APP_FG_REGISTER(Test, LV_SYMBOL_SETTINGS, app_test_init, app_test_run, app_test_exit, 99);
+APP_FG_REGISTER(Test, LV_SYMBOL_SETTINGS, app_test_init, app_test_run, app_test_exit, 99, app_no_state_t);
 
 static void app_test_init(void *scr)
 {

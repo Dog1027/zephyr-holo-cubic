@@ -5,8 +5,6 @@
 #include "nav.h"
 #include <math.h>
 
-APP_FG_REGISTER(Timer, LV_SYMBOL_BELL, app_timer_init, app_timer_run, app_timer_exit, 12);
-
 #define TIMER_ACCENT_COLOR  0xf25f5c
 #define TIMER_ARC_SIZE      196
 #define TIMER_FACE_DOWN_DEG 150.0f  // |roll| 超過這個角度表示螢幕朝下
@@ -17,23 +15,29 @@ typedef enum { STATE_SET, STATE_RUNNING, STATE_PAUSED, STATE_DONE } timer_state_
 
 static const uint8_t presets[] = {5, 10, 15, 25, 45, 60};
 
+// 常駐（不放 self）：style 只在第一次打開時初始化，之後每次都沿用
 static lv_style_t style_chip;
 static lv_style_t style_chip_focused;
 static bool styles_inited;
 
-static lv_obj_t *arc;
-static lv_obj_t *time_label;
-static lv_obj_t *state_label;
-static lv_obj_t *chips;
-static lv_obj_t *tap_area;
+// app 開著時的狀態，放在共用的 app_state_mem（fg_app.h），每次打開前清成 0
+typedef struct {
+    lv_obj_t *arc;
+    lv_obj_t *time_label;
+    lv_obj_t *state_label;
+    lv_obj_t *chips;
+    lv_obj_t *tap_area;
+    int32_t shown_sec;
+    bool face_down;
+} self_t;
+
+APP_FG_REGISTER(Timer, LV_SYMBOL_BELL, app_timer_init, app_timer_run, app_timer_exit, 12, self_t);
 
 // 計時狀態放在 app 外面，離開 app 也會繼續跑，回來時接著顯示
 static timer_state_t state = STATE_SET;
 static uint32_t total_ms = 25 * 60 * 1000;
 static uint32_t remain_ms = 25 * 60 * 1000;
 static int64_t end_ms;
-static int32_t shown_sec;
-static bool face_down;
 
 static void alarm_blink(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(alarm_work, alarm_blink);
@@ -96,12 +100,12 @@ static void time_show(uint32_t ms, bool force)
 {
     // 無條件進位，剩 0.5 秒時還是顯示 00:01
     int32_t sec = (ms + 999) / 1000;
-    if (sec == shown_sec && !force) {
+    if (sec == self->shown_sec && !force) {
         return;
     }
-    shown_sec = sec;
-    lv_label_set_text_fmt(time_label, "%02d:%02d", sec / 60, sec % 60);
-    lv_arc_set_value(arc, total_ms ? (int32_t)((uint64_t)ms * 1000 / total_ms) : 0);
+    self->shown_sec = sec;
+    lv_label_set_text_fmt(self->time_label, "%02d:%02d", sec / 60, sec % 60);
+    lv_arc_set_value(self->arc, total_ms ? (int32_t)((uint64_t)ms * 1000 / total_ms) : 0);
 }
 
 static void state_set(timer_state_t new_state)
@@ -136,24 +140,24 @@ static void state_set(timer_state_t new_state)
     }
     state = new_state;
 
-    lv_label_set_text(state_label, text[state]);
+    lv_label_set_text(self->state_label, text[state]);
     if (state == STATE_SET) {
-        lv_obj_set_hidden(chips, false);
-        lv_group_remove_obj(tap_area);
+        lv_obj_set_hidden(self->chips, false);
+        lv_group_remove_obj(self->tap_area);
         // 第一個加入 group 的選項會被 focus 並改掉 total_ms，先記住上次選的
         uint32_t last_ms = total_ms;
-        ui_group_add_children(chips);
+        ui_group_add_children(self->chips);
         // highlight 上次選的分鐘數，不要每次都跳回第一個
         for (int i = 0; i < (int)ARRAY_SIZE(presets); i++) {
             if (presets[i] * 60 * 1000 == last_ms) {
-                lv_group_focus_obj(lv_obj_get_child(chips, i));
+                lv_group_focus_obj(lv_obj_get_child(self->chips, i));
                 break;
             }
         }
     }
     else {
-        lv_obj_set_hidden(chips, true);
-        ui_group_solo(tap_area);
+        lv_obj_set_hidden(self->chips, true);
+        ui_group_solo(self->tap_area);
     }
     time_show(remaining(), true);
 }
@@ -202,45 +206,45 @@ static void app_timer_init(void *scr)
     styles_init();
     ui_screen_init(scr);
 
-    arc = lv_arc_create(scr);
-    lv_obj_set_size(arc, TIMER_ARC_SIZE, TIMER_ARC_SIZE);
-    lv_obj_center(arc);
-    lv_arc_set_rotation(arc, 270);
-    lv_arc_set_bg_angles(arc, 0, 360);
-    lv_arc_set_range(arc, 0, 1000);
-    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
-    lv_obj_set_clickable(arc, false);
-    lv_obj_set_style_arc_width(arc, 8, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(arc, lv_color_hex(0x1c2333), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(arc, 8, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_color(arc, lv_color_hex(TIMER_ACCENT_COLOR), LV_PART_INDICATOR);
+    self->arc = lv_arc_create(scr);
+    lv_obj_set_size(self->arc, TIMER_ARC_SIZE, TIMER_ARC_SIZE);
+    lv_obj_center(self->arc);
+    lv_arc_set_rotation(self->arc, 270);
+    lv_arc_set_bg_angles(self->arc, 0, 360);
+    lv_arc_set_range(self->arc, 0, 1000);
+    lv_obj_remove_style(self->arc, NULL, LV_PART_KNOB);
+    lv_obj_set_clickable(self->arc, false);
+    lv_obj_set_style_arc_width(self->arc, 8, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(self->arc, lv_color_hex(0x1c2333), LV_PART_MAIN);
+    lv_obj_set_style_arc_width(self->arc, 8, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(self->arc, lv_color_hex(TIMER_ACCENT_COLOR), LV_PART_INDICATOR);
 
-    time_label = lv_label_create(scr);
-    lv_obj_set_style_text_font(time_label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(time_label, lv_color_white(), 0);
-    lv_obj_align(time_label, LV_ALIGN_CENTER, 0, -10);
+    self->time_label = lv_label_create(scr);
+    lv_obj_set_style_text_font(self->time_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(self->time_label, lv_color_white(), 0);
+    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
 
-    state_label = lv_label_create(scr);
-    lv_obj_set_width(state_label, 140);
-    lv_label_set_long_mode(state_label, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_style_text_align(state_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(state_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(state_label, lv_color_hex(UI_DIM_COLOR), 0);
-    lv_obj_align(state_label, LV_ALIGN_CENTER, 0, 34);
+    self->state_label = lv_label_create(scr);
+    lv_obj_set_width(self->state_label, 140);
+    lv_label_set_long_mode(self->state_label, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_style_text_align(self->state_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(self->state_label, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_align(self->state_label, LV_ALIGN_CENTER, 0, 34);
 
-    tap_area = ui_tap_area(scr, tap_cb, NULL);
-    lv_group_remove_obj(tap_area);
+    self->tap_area = ui_tap_area(scr, tap_cb, NULL);
+    lv_group_remove_obj(self->tap_area);
 
-    chips = lv_obj_create(scr);
-    lv_obj_remove_style_all(chips);
-    lv_obj_set_size(chips, LV_PCT(100), 24);
-    lv_obj_align(chips, LV_ALIGN_BOTTOM_MID, 0, -6);
-    lv_obj_set_flex_flow(chips, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(chips, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(chips, 4, 0);
+    self->chips = lv_obj_create(scr);
+    lv_obj_remove_style_all(self->chips);
+    lv_obj_set_size(self->chips, LV_PCT(100), 24);
+    lv_obj_align(self->chips, LV_ALIGN_BOTTOM_MID, 0, -6);
+    lv_obj_set_flex_flow(self->chips, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(self->chips, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(self->chips, 4, 0);
 
     for (int i = 0; i < (int)ARRAY_SIZE(presets); i++) {
-        lv_obj_t *chip = lv_obj_create(chips);
+        lv_obj_t *chip = lv_obj_create(self->chips);
         lv_obj_remove_style_all(chip);
         lv_obj_add_style(chip, &style_chip, 0);
         lv_obj_add_style(chip, &style_chip_focused, LV_STATE_FOCUSED);
@@ -254,7 +258,7 @@ static void app_timer_init(void *scr)
         lv_obj_add_event_cb(chip, chip_clicked_cb, LV_EVENT_CLICKED, NULL);
     }
 
-    face_down = false;
+    self->face_down = false;
     nav_set_handler(nav_cb);
     if (state == STATE_RUNNING && remaining() == 0) {
         state = STATE_DONE;
@@ -274,10 +278,10 @@ static void app_timer_run(void *scr)
     // 翻面朝下時暫停，只在翻過去的那一下觸發
     input_get(&angle);
     bool down = fabsf(angle.roll) > TIMER_FACE_DOWN_DEG;
-    if (down && !face_down && state == STATE_RUNNING) {
+    if (down && !self->face_down && state == STATE_RUNNING) {
         state_set(STATE_PAUSED);
     }
-    face_down = down;
+    self->face_down = down;
 
     time_show(remaining(), false);
 }

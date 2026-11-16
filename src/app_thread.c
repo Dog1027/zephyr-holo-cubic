@@ -4,10 +4,14 @@
 #include "nav.h"
 #include "gui.h"
 #include <lvgl.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(app_thread, CONFIG_APP_THREAD_LOG_LEVEL);
 
 static void app_thread_entry(void *arg1, void *arg2, void *arg3);
+
+// 前景 app 共用的 state（見 app.h）。noinit：開機不清，每次打開 app 前才清
+uint8_t app_state_mem[CONFIG_APP_STATE_SIZE] __noinit __aligned(8);
 
 K_THREAD_DEFINE(
     app_thread,
@@ -113,6 +117,7 @@ static void app_thread_entry(void *arg1, void *arg2, void *arg3)
                     fg_app = (app_t *)data;
                     LOG_INF("Starting foreground application: %s", fg_app->name);
                     use_group(fg_group);
+                    memset(app_state_mem, 0, fg_app->state_size);
                     fg_app->init(fg_scr);
                     lv_screen_load_anim(fg_scr, LV_SCR_LOAD_ANIM_FADE_IN, CONFIG_APP_THREAD_ANIM_DURATION_MS, 0, false);
                     break;
