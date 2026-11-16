@@ -32,9 +32,11 @@ typedef struct {
 
 static const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
-static uint8_t workbuf[JPEG_WORKBUF_SIZE];
+// __noinit：ESP32 的 .noinit 放在 DRAM region 1（ESP32_REGION_1_NOINIT），把 region 0 留給
+// Wi-Fi / 網路堆疊。兩個 buffer 每次用之前都會整塊寫過，不需要清成 0；region 1 一樣可以 DMA
+static uint8_t workbuf[JPEG_WORKBUF_SIZE] __noinit;
 // 兩個 buffer 輪流：解碼下一列的同時，writer thread 用 DMA 把上一列送到螢幕
-static uint16_t row_buf[2][JPEG_MAX_WIDTH * JPEG_MCU_HEIGHT];
+static uint16_t row_buf[2][JPEG_MAX_WIDTH * JPEG_MCU_HEIGHT] __noinit;
 static K_SEM_DEFINE(buf0_free, 1, 1);
 static K_SEM_DEFINE(buf1_free, 1, 1);
 static struct k_sem *const buf_free[2] = {&buf0_free, &buf1_free};

@@ -81,4 +81,24 @@ config INPUT_LOG_LEVEL
     help
       0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
 
+config WLAN_INIT_PRIORITY
+    int "Wi-Fi Initialization Priority"
+    default 95
+    range 0 99
+    help
+      Must come after FILE_INIT_PRIORITY: the SSID and PSK are read from the SD card.
+
+config WLAN_WORKQ_STACK_SIZE
+    int "Wi-Fi Work Queue Stack Size"
+    default 4096
+    help
+      Reads the SD card config and sends the connect request to the driver.
+
+config WLAN_LOG_LEVEL
+    int "Wi-Fi Log Level"
+    default 3
+    range 0 4
+    help
+      0: OFF, 1: ERROR, 2: WARNING, 3: INFO, 4: DEBUG
+
 rsource "apps/Kconfig.apps"

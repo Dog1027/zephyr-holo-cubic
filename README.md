@@ -48,6 +48,7 @@ zephyrproject/
 需要：
 
 - Zephyr 4.3 與對應的 Zephyr SDK（目前用 0.17.4）
+- Espressif 的 Wi-Fi binary blob：`west blobs fetch hal_espressif`
 - CMake、Ninja、gperf
 - [just](https://just.systems)
 
@@ -82,6 +83,13 @@ ui remote             遙控模式
 
 tool imu_get          讀取加速度
 tool led_set R G B    直接設定 LED 顏色（0-255）
+
+wlan set SSID [PSK]   存到 SD 卡的 /config.txt 並連線（SSID 有空白要加引號，開放網路不給 PSK）
+wlan status           設定、連線狀態和 IP
+wlan scan             列出附近的網路
+wlan connect          用 SD 卡上的設定重新連線
+wlan disconnect       斷線，之後不會自動重連，直到 wlan connect
+wlan forget           從 /config.txt 刪掉 SSID / PSK 並斷線
 ```
 
 `ui remote` 進入遙控模式後，按鍵會直接控制裝置：
@@ -121,9 +129,25 @@ just gif2jpg cat.gif out/cat 120x120
     001.jpg
     delay.txt           每格毫秒數（選用，預設 100）
 /lots.txt               抽籤清單，一行一項（字型只支援英數字）
+/config.txt             設定檔（Wi-Fi），格式見下面
 ```
 
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
+
+### Wi-Fi 設定
+
+開機時從 SD 卡的 `/config.txt` 讀取 Wi-Fi 設定並連線，可以在電腦上直接編輯，也可以在 shell 用 `wlan set`：
+
+```
+# HoloCubic 設定
+wifi_ssid=MyNetwork
+wifi_psk=password
+```
+
+- 一行一個 `key=value`，key 和值前後的空白會被忽略；`#` 開頭的行是註解。
+- 開放網路不要寫 `wifi_psk`；有密碼時要 8 到 64 個字元（WPA2-PSK）。
+- `wlan set` 改設定時會保留其他行和註解，檔案上限 1 KB。
+- 斷線或連不上時每 10 秒重試一次，只在第一次失敗時記 log。只支援 2.4 GHz。
 
 ## 新增 app
 
@@ -183,6 +207,8 @@ src/
   led.c                 RGB LED 與基礎顏色
   prefs.c               斷電保存的設定（settings / NVS）
   file.c                SD 卡掛載
+  sdconf.c              SD 卡上的設定檔 /config.txt（key=value）
+  wlan.c                Wi-Fi 連線與 wlan 指令
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
   apps/bg/app_menu.c    Menu
   apps/fg/              各個 app
@@ -197,6 +223,7 @@ tools/                  圖片與動畫轉檔工具
 - **只能一條 SPI 開 DMA**：兩條 SPI 共用 ESP32 的 DMA 時脈，Zephyr 驅動會讓第二條初始化失敗（log 出現 "Could not enable DMA clock"），所以只有螢幕的 SPI3 開 DMA。
 - **SPI 速度**：SD 卡的 MISO 在 GPIO 26，要經過 GPIO 矩陣，超過 20 MHz 讀不到正確資料。螢幕目前 30 MHz。
 - **I2C 維持 100 kHz**：腳位沒有開內建上拉，400 kHz 時 MPU6050 會初始化失敗。
+- **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩約 1.5 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
 - **不要在 `SYS_INIT` 裡繪圖**：開了 LVGL flush thread 後，它要等所有 `SYS_INIT` 結束才會啟動，在那之前繪圖會讓開機卡死。第一次繪圖在 `app_thread` 裡的 `gui_start()`。
 - **LVGL 記憶體**：Menu 會一直留在背景，加上前景 app 和切換動畫，32 KB 不夠，目前設為 64 KB。可以用 SysInfo 看實際用量。
 - **字型**：內建的 Montserrat 不含中文。

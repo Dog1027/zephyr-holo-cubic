@@ -25,5 +25,7 @@ target_sources(app PRIVATE
   src/prefs.c
   src/nav.c
   src/i2c_pullup.c
+  src/sdconf.c
+  src/wlan.c
   src/lib/tjpgd/tjpgd.c
 )

@@ -164,3 +164,8 @@
     // Only one bus may have DMA, see &spi2.
     dma-enabled;
 };
+
+// Wi-Fi station (src/wlan.c). Needs the Espressif blobs: west blobs fetch hal_espressif
+&wifi {
+    status = "okay";
+};
