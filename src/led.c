@@ -1,9 +1,17 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/led_strip.h>
+#include <zephyr/drivers/i2s.h>
+#include <zephyr/logging/log.h>
 #include "led.h"
 #include "prefs.h"
 
+LOG_MODULE_REGISTER(led, CONFIG_CUBE_LOG_LEVEL);
+
+#define LED_WRITE_TRIES 4
+
 static const struct device *led_dev = DEVICE_DT_GET_OR_NULL(DT_NODELABEL(rgb_led));
+// ws2812 掛在 I2S 下面
+static const struct device *i2s_dev = DEVICE_DT_GET_OR_NULL(DT_PARENT(DT_NODELABEL(rgb_led)));
 // app thread、shell 和 Timer 的 work queue 都會寫 LED
 static K_MUTEX_DEFINE(led_mutex);
 static uint32_t base_rgb;
@@ -15,9 +23,26 @@ int led_set_raw(uint8_t r, uint8_t g, uint8_t b)
     }
 
     struct led_rgb pixel = { .r = r, .g = g, .b = b };
+    int ret = 0;
+
     k_mutex_lock(&led_mutex, K_FOREVER);
-    int ret = led_strip_update_rgb(led_dev, &pixel, 1);
+    for (int i = 0; i < LED_WRITE_TRIES; i++) {
+        ret = led_strip_update_rgb(led_dev, &pixel, 1);
+        if (ret != -EIO) {
+            break;
+        }
+        // ws2812_i2s 送完 START 才送 DRAIN，只有一顆 LED 時資料很短，中間被中斷（Wi-Fi 忙的時候很常見）
+        // 就已經傳完，DRAIN 回 -EIO；I2S 也可能停在 ERROR，要 PREPARE 才回得來（其他狀態下沒有作用）。
+        // 重送同一個顏色沒有副作用
+        k_msleep(1);
+        if (i2s_dev != NULL) {
+            i2s_trigger(i2s_dev, I2S_DIR_TX, I2S_TRIGGER_PREPARE);
+        }
+    }
     k_mutex_unlock(&led_mutex);
+    if (ret < 0) {
+        LOG_WRN("LED write failed (%d)", ret);
+    }
     return ret;
 }
 

@@ -160,7 +160,7 @@ curl -T cat.jpg http://192.168.1.20/photo/
 for f in out/cat/*; do curl -T "$f" http://192.168.1.20/anim/cat/; done
 ```
 
-資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字和 `._-+()` 與空白。速度大約 50 KB/s（TCP 接收視窗只有 3 KB），一張照片不到一秒。傳到一半斷線，沒傳完的檔案會被刪掉。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
+資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字和 `._-+()` 與空白。速度大約 70–90 KB/s（TCP 接收視窗只有 3 KB），一張照片不到一秒。傳到一半斷線，沒傳完的檔案會被刪掉。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
 
 ### 投影（Cast app）
 
@@ -173,7 +173,7 @@ just cast 192.168.1.20 cat.gif --loop           # 重複播放，Ctrl+C 停止
 just cast 192.168.1.20 --screen --region 0,0,800,800   # 螢幕的一部分（X11）
 ```
 
-圖片會先在電腦上縮小並轉成 baseline JPEG，方塊解碼後回一個 byte，電腦收到才送下一格，所以不會延遲累積。240x240 大約 5 fps，`--size 160x160` 大約 8 fps。投影結束後畫面回到說明。
+圖片會先在電腦上縮小並轉成 baseline JPEG，方塊解碼後回一個 byte，電腦收到才送下一格，所以不會延遲累積。240x240 大約 6 fps，`--size 160x160` 大約 8 fps。投影結束後畫面回到說明。
 
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
 
@@ -304,6 +304,9 @@ tools/                  圖片與動畫轉檔、投影（cast.py）與序列埠�
 - **重置後 IMU 讀不到**：ESP32 重置時 MPU6050 不會斷電，如果剛好卡在 I2C 讀取途中，它會一直拉著 SDA。開機時在 sensor 初始化之前先做一次 bus recovery 解決。
 - **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。例外是只在 app 開著時才需要的 server（Upload、Cast）：用 `net_server.h` 的 non-blocking socket 在 `run()` 裡處理，每次最多等幾十 ms，不另開 thread。
 - **socket 數量**：`CONFIG_NET_MAX_CONTEXTS` / `CONFIG_NET_MAX_CONN` 是 5。server 主動斷線的連線會在 TIME_WAIT 佔著一個約 1.5 秒，所以 Upload 盡量讓對方先斷線（被拒絕的上傳也先把資料讀完再回錯誤）。
+- **Wi-Fi 不省電**：`CONFIG_ESP32_WIFI_STA_POWER_SAVE_NONE`。modem sleep 會讓 Cast 的 fps 掉一半，反正是接 USB 供電。
+- **剛連上網路時 DNS 可能沒回應**：同一個 MAC 在幾秒內重新連線（例如燒錄完馬上重置）時，偶爾前 5 秒左右的 DNS 回應都收不到（ARP 和送出的查詢都正常，是網路那頭丟的）。DNS 每 1 / 2 秒重送一次，SNTP 失敗 15 秒後重試，Weather 可以按 OK 重抓；`just test` 偶爾會因此出現一筆 SNTP / weather 的 warning。
+- **LED 偶爾寫入失敗**：ws2812_i2s 送完 START 才送 DRAIN，只有一顆 LED 時資料很短，中間被中斷就已經傳完，DRAIN 回 -EIO（Wi-Fi 忙時更常見）。`led.c` 會重送，並在 I2S 停在 ERROR 時 PREPARE；driver 的 log 關掉了（`CONFIG_LED_STRIP_LOG_LEVEL_OFF`）。
 - **編譯器 bug**：Zephyr SDK 1.0.1 的 Xtensa GCC 14.3 會把 TJpgDec 裡 `pc += ix & 1` 編錯（-O1、-O2 都會），解碼時讀到 NULL 當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
 - **只能用 HTTP**：TLS 需要的記憶體放不下，所以網路服務都用純 HTTP。回應太大時要邊收邊解析（例如 `weather.c` 的 40 KB JSON 只用 512 B 的 buffer）。
 - **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩不到 1 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
