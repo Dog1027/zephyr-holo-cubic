@@ -23,7 +23,7 @@
  *   PUT /<檔案>            上傳（POST 也可以），資料夾不存在就建立
  *   PUT /<資料夾>/         建立資料夾
  *   DELETE /<路徑>         刪除檔案或空的資料夾
- * 4 位數 PIN 顯示在螢幕上，存在 flash 所以每次都一樣（瀏覽器記住就不用再輸入），在 app 裡按 OK 換一組。
+ * 4 位數 PIN 顯示在螢幕上，存在 flash 所以每次都一樣（網頁用 session cookie 記到瀏覽器關掉為止），在 app 裡按 OK 換一組。
  * PIN 用 cookie "pin=1234"（網頁）、
  * header "X-Pin: 1234" 或 "?pin=1234" 帶上來；連錯 SHARE_PIN_TRIES 次鎖一段時間。
  * 一次服務一個連線（keep-alive），全部在 run() 裡做。
@@ -130,7 +130,7 @@ static const char page[] =
     "const sub=n=>(cwd?cwd+'/':'')+n;"
     "function pin(ask){if(ask||!/pin=\\d{4}/.test(document.cookie)){"
     "const v=prompt('PIN shown on the cube');if(!v)return false;"
-    "document.cookie='pin='+v.trim()+';path=/;max-age=31536000;SameSite=Strict'}return true}"
+    "document.cookie='pin='+v.trim()+';path=/;SameSite=Strict'}return true}"
     "async function api(method,url){for(;;){const r=await fetch(url,{method});"
     "if(r.status!=401||!pin(true))return r}}"
     "function say(t){const e=document.createElement('div');e.textContent=t;$('log').prepend(e);return e}"
