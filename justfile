@@ -38,6 +38,10 @@ img2jpg in out size="240x240" quality="85" fit="cover":
 cast host *args:
     {{python}} {{topdir}}/tools/cast.py {{host}} {{args}}
 
+# Test the Share app on the device over Wi-Fi: PIN, list, upload, download, mkdir, delete (close any serial monitor first)
+test-share:
+    {{python}} {{topdir}}/tools/share_test.py {{port}}
+
 # Reset the board, open and close every app over the shell, report errors and stack usage (close any serial monitor first)
 test:
     {{python}} {{topdir}}/tools/serial_test.py {{port}} {{build_dir}}/serial_test.log

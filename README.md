@@ -21,7 +21,7 @@
 | Timer | 計時器，翻面朝下會暫停，離開 app 也會繼續計時 | |
 | SysInfo | 運行時間、heap、SD 卡容量、各 thread 的 stack 用量 | |
 | Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | `/config.txt`（Wi-Fi） |
-| Upload | 開著時在 port 80 跑 HTTP server，用瀏覽器或 curl 把檔案傳到 SD 卡（見下面） | `/config.txt`（Wi-Fi） |
+| Share | 網頁版的檔案管理：開著時用瀏覽器或 curl 瀏覽、上傳、下載、刪除 SD 卡上的檔案，要輸入螢幕上的 PIN（見下面） | `/config.txt`（Wi-Fi） |
 | Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上（`just cast`，見下面） | `/config.txt`（Wi-Fi） |
 | Test | 空的 app，給測試新功能用 | |
 
@@ -148,19 +148,24 @@ just gif2jpg cat.gif out/cat 120x120
 /config.txt             設定檔（Wi-Fi、時區），格式見下面
 ```
 
-### 用 Wi-Fi 上傳（Upload app）
+### 用 Wi-Fi 管理檔案（Share app）
 
-不用拔 SD 卡：打開 Upload，畫面會顯示網址，例如 `http://192.168.1.20/`。
+不用拔 SD 卡：打開 Share，畫面會顯示網址（例如 `http://192.168.1.20/`）和一組 4 位數 PIN。PIN 每次打開 app 都會換，連續錯 5 次會鎖 30 秒。
 
-- **瀏覽器**：打開網址，填資料夾（預設 `photo`，空白是根目錄），選檔案按 Upload，會顯示每個檔案的進度。
-- **curl**：網址結尾是 `/` 時 curl 會自動接上檔名。
+- **瀏覽器**：打開網址，輸入 PIN，就能瀏覽資料夾、上傳（選檔案或直接拖進去，有進度）、點檔名下載 / 預覽、刪除、建立資料夾。
+- **curl**：用 `-b pin=1234`（或 `-H "X-Pin: 1234"`、網址加 `?pin=1234`）帶 PIN。
 
 ```bash
-curl -T cat.jpg http://192.168.1.20/photo/
-for f in out/cat/*; do curl -T "$f" http://192.168.1.20/anim/cat/; done
+curl -b pin=1234 -T cat.jpg http://192.168.1.20/photo/       # 上傳，結尾是 / 時 curl 會自動接上檔名
+curl -b pin=1234 http://192.168.1.20/photo/?list             # 列出資料夾（JSON）
+curl -b pin=1234 -O http://192.168.1.20/photo/cat.jpg        # 下載
+curl -b pin=1234 -X PUT http://192.168.1.20/anim/cat/        # 建立資料夾
+curl -b pin=1234 -X DELETE http://192.168.1.20/photo/cat.jpg # 刪除檔案或空的資料夾
 ```
 
-資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字和 `._-+()` 與空白。速度大約 70–90 KB/s（TCP 接收視窗只有 3 KB），一張照片不到一秒。傳到一半斷線，沒傳完的檔案會被刪掉。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
+上傳時資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字、空白和 `._-+()`，其他名稱的檔案會列出來但不能操作。上傳大約 85 KB/s、下載大約 65 KB/s，適合照片和設定檔。傳到一半斷線，沒傳完的上傳檔案會被刪掉。一次只服務一個連線。`/config.txt`（裡面有 Wi-Fi 密碼）有 PIN 就能讀寫，所以只在信任的網路上打開這個 app。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
+
+`just test-share` 會在實機上把這些功能和 PIN 規則測一遍。
 
 ### 投影（Cast app）
 
@@ -284,7 +289,7 @@ src/
   wlan.c                Wi-Fi 連線、掃描與 wlan 指令
   net_job.c             網路工作共用的背景 work queue
   net_time.c            SNTP 對時、時區與 ntp 指令
-  net_server.c          app 在 run() 裡用的 non-blocking TCP server（Upload、Cast）
+  net_server.c          app 在 run() 裡用的 non-blocking TCP server（Share、Cast）
   weather.c             從 wttr.in 抓天氣（HTTP，邊收邊解析 JSON）與 weather 指令
   i2c_pullup.c          I2C 腳位的 RTC 內建上拉與開機時的 bus recovery
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
@@ -302,8 +307,8 @@ tools/                  圖片與動畫轉檔、投影（cast.py）與序列埠�
 - **SPI 速度**：SD 卡的 MISO 在 GPIO 26，要經過 GPIO 矩陣，超過 20 MHz 讀不到正確資料。螢幕目前 30 MHz。
 - **I2C 維持 100 kHz**：板子上沒有外部上拉電阻，靠 ESP32 約 45 kΩ 的內建上拉（`src/i2c_pullup.c`），400 kHz 時 MPU6050 會初始化失敗。GPIO32/33 是 RTC pad，pinctrl 的 `bias-pull-up` 對它們沒有作用，上拉要設在 RTC_IO。
 - **重置後 IMU 讀不到**：ESP32 重置時 MPU6050 不會斷電，如果剛好卡在 I2C 讀取途中，它會一直拉著 SDA。開機時在 sensor 初始化之前先做一次 bus recovery 解決。
-- **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。例外是只在 app 開著時才需要的 server（Upload、Cast）：用 `net_server.h` 的 non-blocking socket 在 `run()` 裡處理，每次最多等幾十 ms，不另開 thread。
-- **socket 數量**：`CONFIG_NET_MAX_CONTEXTS` / `CONFIG_NET_MAX_CONN` 是 5。server 主動斷線的連線會在 TIME_WAIT 佔著一個約 1.5 秒，所以 Upload 盡量讓對方先斷線（被拒絕的上傳也先把資料讀完再回錯誤）。
+- **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。例外是只在 app 開著時才需要的 server（Share、Cast）：用 `net_server.h` 的 non-blocking socket 在 `run()` 裡處理，每次最多等幾十 ms，不另開 thread。
+- **socket 數量**：`CONFIG_NET_MAX_CONTEXTS` / `CONFIG_NET_MAX_CONN` 是 5。server 主動斷線的連線會在 TIME_WAIT 佔著一個（已縮短成 0.25 秒），所以 Share 盡量讓對方先斷線（被拒絕的上傳也先把資料讀完再回錯誤）。
 - **Wi-Fi 不省電**：`CONFIG_ESP32_WIFI_STA_POWER_SAVE_NONE`。modem sleep 會讓 Cast 的 fps 掉一半，反正是接 USB 供電。
 - **剛連上網路時 DNS 可能沒回應**：同一個 MAC 在幾秒內重新連線（例如燒錄完馬上重置）時，偶爾前 5 秒左右的 DNS 回應都收不到（ARP 和送出的查詢都正常，是網路那頭丟的）。DNS 每 1 / 2 秒重送一次，SNTP 失敗 15 秒後重試，Weather 可以按 OK 重抓；`just test` 偶爾會因此出現一筆 SNTP / weather 的 warning。
 - **LED 偶爾寫入失敗**：ws2812_i2s 送完 START 才送 DRAIN，只有一顆 LED 時資料很短，中間被中斷就已經傳完，DRAIN 回 -EIO（Wi-Fi 忙時更常見）。`led.c` 會重送，並在 I2S 停在 ERROR 時 PREPARE；driver 的 log 關掉了（`CONFIG_LED_STRIP_LOG_LEVEL_OFF`）。
