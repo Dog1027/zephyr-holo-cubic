@@ -20,8 +20,11 @@ flash_args := "--esp-device " + port + " --esp-baud-rate " + baud
 python := "uv run --project " + topdir + " python -I"
 
 # Open serial monitor
+# `west espressif` reads runners.yaml from the build dir it finds on its own, before parsing
+# any arguments (-e does not help), so it has to run from inside build_dir. build_dir is not in
+# the west workspace, so ZEPHYR_BASE tells west where the workspace is.
 monitor:
-    {{west}} espressif monitor -p {{port}} -e {{build_dir}}/zephyr/zephyr.elf
+    cd {{build_dir}} && ZEPHYR_BASE={{workspace}}/zephyr uv run --no-project --python {{workspace}}/.venv west espressif monitor -p {{port}}
 
 # Convert a GIF into a baseline JPEG sequence, e.g. just gif2jpg anim.gif out/anim 120x120
 gif2jpg gif out size="240x240" quality="80" bg="000000":
