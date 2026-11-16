@@ -1,8 +1,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/net/net_mgmt.h>
-#include <zephyr/net/net_event.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/shell/shell.h>
 #include <ctype.h>
@@ -19,8 +17,7 @@ LOG_MODULE_REGISTER(weather, CONFIG_WLAN_LOG_LEVEL);
 #define HOST            "wttr.in"
 #define KEY_LOCATION    "weather_location"
 #define FETCH_TIMEOUT_MS 30000
-#define UPDATE_DELAY    K_MINUTES(30)
-#define RETRY_DELAY     K_SECONDS(60)
+#define RETRY_MS        60000   // 失敗之後 weather_request() 等這麼久才再試
 // 中午的天氣代表那一天
 #define NOON            1200
 #define DAY_MAX         BIT(0)
@@ -62,7 +59,6 @@ static void fetch_work_fn(struct k_work *work);
 
 // DRAM region 0 幾乎滿了，這裡的狀態都放 noinit，在 weather_init() 裡初始化
 static struct k_work_delayable fetch_work __noinit;
-static struct net_mgmt_event_callback l4_cb __noinit;
 static parser_t parser __noinit;
 static weather_t current __noinit;
 static char rx_buf[512] __noinit;
@@ -70,6 +66,7 @@ static struct k_spinlock lock;
 static bool have_data;
 static uint8_t state;
 static int16_t last_error;
+static int64_t failed_ms;
 
 static weather_kind_t kind_from_code(int code)
 {
@@ -468,17 +465,16 @@ static void fetch_work_fn(struct k_work *work)
     }
     else {
         last_error = ret;
+        failed_ms = k_uptime_get();
         state = WEATHER_FAILED;
     }
     k_spin_unlock(&lock, key);
 
     if (ret == 0) {
         LOG_INF("Weather for %s: %d C, %s", current.area, current.temp_c, current.desc);
-        k_work_reschedule_for_queue(net_job_queue(), &fetch_work, UPDATE_DELAY);
     }
     else {
-        LOG_WRN("Weather update failed (%d), retrying in 60 s", ret);
-        k_work_reschedule_for_queue(net_job_queue(), &fetch_work, RETRY_DELAY);
+        LOG_WRN("Weather update failed (%d)", ret);
     }
 }
 
@@ -498,8 +494,11 @@ weather_state_t weather_state(void)
     if (!wlan_is_online()) {
         return WEATHER_OFFLINE;
     }
-    // 剛上線、還沒輪到抓的時候也算載入中
-    return state == WEATHER_OFFLINE ? WEATHER_LOADING : state;
+    // 已經排進 queue、還沒開始跑的時候也算載入中
+    if (k_work_delayable_busy_get(&fetch_work) != 0) {
+        return WEATHER_LOADING;
+    }
+    return state == WEATHER_OFFLINE ? WEATHER_IDLE : state;
 }
 
 int weather_error(void)
@@ -512,19 +511,27 @@ void weather_update(void)
     k_work_reschedule_for_queue(net_job_queue(), &fetch_work, K_NO_WAIT);
 }
 
-// 上線後等一下再抓，讓 SNTP 先跑（兩個都在 net_job queue 上，依序執行）
-static void l4_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
-                             struct net_if *iface)
+void weather_request(uint32_t max_age_ms)
 {
-    k_work_reschedule_for_queue(net_job_queue(), &fetch_work, K_SECONDS(1));
+    if (!wlan_is_online() || k_work_delayable_busy_get(&fetch_work) != 0) {
+        return;
+    }
+
+    int64_t now = k_uptime_get();
+    k_spinlock_key_t key = k_spin_lock(&lock);
+    bool retry_wait = state == WEATHER_FAILED && now - failed_ms < RETRY_MS;
+    bool fresh = have_data && now - current.updated_ms < max_age_ms;
+    k_spin_unlock(&lock, key);
+
+    if (!retry_wait && !fresh) {
+        weather_update();
+    }
 }
 
 static int weather_init(void)
 {
     memset(&current, 0, sizeof(current));
     k_work_init_delayable(&fetch_work, fetch_work_fn);
-    net_mgmt_init_event_callback(&l4_cb, l4_event_handler, NET_EVENT_L4_CONNECTED);
-    net_mgmt_add_event_callback(&l4_cb);
     return 0;
 }
 
@@ -538,7 +545,8 @@ static const char *const wday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri
 
 static int _weather_show(const struct shell *shell, size_t argc, char **argv)
 {
-    static const char *const state_names[] = {"waiting for Wi-Fi", "loading", "ready", "failed"};
+    static const char *const state_names[] = {"not loaded yet (open Weather or weather update)",
+                                              "no Wi-Fi", "loading", "ready", "failed"};
     weather_state_t s = weather_state();
     weather_t data;
     weather_t *w = &data;

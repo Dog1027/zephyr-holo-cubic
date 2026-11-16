@@ -13,6 +13,7 @@
 #define SMALL_ICON_SIZE         30
 #define DAY_COLUMN_WIDTH        76
 #define STATUS_REFRESH_MS       5000
+#define MAX_AGE_MS              (30 * 60 * 1000)   // 打開時或開著時，資料超過這個時間就重抓
 
 static const char *const wday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
@@ -246,6 +247,9 @@ static void app_weather_run(void *scr)
         self->pending_update = false;
         weather_update();
     }
+
+    // 沒有資料或太舊就請背景抓；失敗後模組自己會等一分鐘才再試
+    weather_request(MAX_AGE_MS);
 
     bool have = weather_get(&self->data);
     weather_state_t state = weather_state();

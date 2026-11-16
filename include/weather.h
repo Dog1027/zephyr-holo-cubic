@@ -5,7 +5,8 @@
 
 /*
  * Current weather and a 3 day forecast from wttr.in (plain HTTP, metric units).
- * Fetched in the background once Wi-Fi is online, then every 30 minutes.
+ * Fetched only on request (the Weather app while it is open, or "weather update"), on the
+ * net_job queue. A fetch takes about 9 s.
  * SD card config (sdconf.h):
  *   weather_location=Taipei     city, "lat,lon" or anything wttr.in accepts (default: by IP)
  * Shell: weather / weather update
@@ -49,10 +50,11 @@ typedef struct {
 } weather_t;
 
 typedef enum {
-    WEATHER_OFFLINE,        // waiting for Wi-Fi
+    WEATHER_IDLE,           // nothing requested yet
+    WEATHER_OFFLINE,        // no Wi-Fi
     WEATHER_LOADING,
     WEATHER_READY,          // last update succeeded
-    WEATHER_FAILED,         // last update failed, retries in a minute
+    WEATHER_FAILED,         // last update failed
 } weather_state_t;
 
 // Copy the last good result. Returns false when there is none yet
@@ -65,3 +67,7 @@ int weather_error(void);
 
 // Update now in the background (no-op while offline)
 void weather_update(void);
+
+// Update in the background when there is no result or it is older than max_age_ms. Does nothing
+// while a fetch is running or within a minute after a failed one. Cheap, call it from run()
+void weather_request(uint32_t max_age_ms);

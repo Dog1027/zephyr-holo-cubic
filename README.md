@@ -11,7 +11,7 @@
 | App | 說明 | 需要的 SD 卡內容 |
 |---|---|---|
 | Clock | 時鐘，網路對時；OK 或敲一下切換 12 / 24 小時制（重開機後保留） | `/config.txt`（Wi-Fi，時區） |
-| Weather | 目前天氣（wttr.in）和三天預報，每 30 分鐘更新；OK 或敲一下馬上更新 | `/config.txt`（Wi-Fi，地點） |
+| Weather | 目前天氣（wttr.in）和三天預報。打開時才抓（約 9 秒），30 分鐘內的資料直接顯示，開著時每 30 分鐘更新；OK 或敲一下馬上更新 | `/config.txt`（Wi-Fi，地點） |
 | Files | 瀏覽 SD 卡，資料夾排在前面 | |
 | Anim | 播放 JPEG 序列動畫，循環播放 | `/anim/<名稱>/000.jpg …` |
 | Photos | 相簿，可自動輪播 | `/photo/*.jpg` |
