@@ -17,7 +17,8 @@ LOG_MODULE_REGISTER(jpeg, CONFIG_CUBE_LOG_LEVEL);
 #define JPEG_WRITER_PRIO  6      // 比 app_thread 高，buffer 一交出去就開始傳
 
 typedef struct {
-    struct fs_file_t file;
+    jpeg_read_cb_t read;
+    void *ctx;
     int x0;
     int y0;
 } jpeg_dec_t;
@@ -100,12 +101,17 @@ static void writer_flush(void)
 static size_t dec_input(JDEC *jd, uint8_t *buf, size_t len)
 {
     jpeg_dec_t *d = jd->device;
+    return d->read(d->ctx, buf, len);
+}
+
+static size_t file_read(void *ctx, uint8_t *buf, size_t len)
+{
+    struct fs_file_t *file = ctx;
 
     if (buf == NULL) {
-        return fs_seek(&d->file, len, FS_SEEK_CUR) == 0 ? len : 0;
+        return fs_seek(file, len, FS_SEEK_CUR) == 0 ? len : 0;
     }
-
-    ssize_t ret = fs_read(&d->file, buf, len);
+    ssize_t ret = fs_read(file, buf, len);
     return ret < 0 ? 0 : (size_t)ret;
 }
 
@@ -171,47 +177,58 @@ void jpeg_begin(void)
     last_h = 0;
 }
 
-int jpeg_show(const char *path)
+int jpeg_show_stream(jpeg_read_cb_t read, void *ctx)
 {
     struct display_capabilities caps;
     JDEC jd;
     JRESULT rc;
+
+    dec.read = read;
+    dec.ctx = ctx;
+    display_get_capabilities(display_dev, &caps);
+    rc = jd_prepare(&jd, dec_input, workbuf, sizeof(workbuf), &dec);
+    if (rc != JDR_OK) {
+        // 最常見的原因是 progressive JPEG，TJpgDec 只支援 baseline
+        LOG_ERR("Failed to decode (%d)", rc);
+        return -EIO;
+    }
+    if (jd.width > MIN(caps.x_resolution, JPEG_MAX_WIDTH) || jd.height > caps.y_resolution) {
+        LOG_ERR("Image is %ux%u, larger than the screen", jd.width, jd.height);
+        return -EIO;
+    }
+
+    if (last_w != 0 && (jd.width != last_w || jd.height != last_h)) {
+        writer_flush();
+        screen_clear(caps.x_resolution, caps.y_resolution);
+    }
+    last_w = jd.width;
+    last_h = jd.height;
+
+    dec.x0 = (caps.x_resolution - jd.width) / 2;
+    dec.y0 = (caps.y_resolution - jd.height) / 2;
+    rc = jd_decomp(&jd, dec_output, 0);
+    writer_flush();
+    return rc == JDR_OK ? 0 : -EIO;
+}
+
+int jpeg_show(const char *path)
+{
+    struct fs_file_t file;
     int ret;
 
     // Anim 用「下一格不存在」判斷播完一輪，這是正常情況，不要讓 fs_open 印錯誤
     if (!file_exists(path)) {
         return -ENOENT;
     }
-    fs_file_t_init(&dec.file);
-    ret = fs_open(&dec.file, path, FS_O_READ);
+    fs_file_t_init(&file);
+    ret = fs_open(&file, path, FS_O_READ);
     if (ret < 0) {
         return ret;
     }
-
-    display_get_capabilities(display_dev, &caps);
-    rc = jd_prepare(&jd, dec_input, workbuf, sizeof(workbuf), &dec);
-    if (rc != JDR_OK) {
-        // 最常見的原因是 progressive JPEG，TJpgDec 只支援 baseline
-        LOG_ERR("Failed to decode %s (%d)", path, rc);
+    ret = jpeg_show_stream(file_read, &file);
+    if (ret < 0) {
+        LOG_ERR("Cannot show %s", path);
     }
-    else if (jd.width > MIN(caps.x_resolution, JPEG_MAX_WIDTH) || jd.height > caps.y_resolution) {
-        LOG_ERR("%s is %ux%u, larger than the screen", path, jd.width, jd.height);
-        rc = JDR_FMT1;
-    }
-    else {
-        if (last_w != 0 && (jd.width != last_w || jd.height != last_h)) {
-            writer_flush();
-            screen_clear(caps.x_resolution, caps.y_resolution);
-        }
-        last_w = jd.width;
-        last_h = jd.height;
-
-        dec.x0 = (caps.x_resolution - jd.width) / 2;
-        dec.y0 = (caps.y_resolution - jd.height) / 2;
-        rc = jd_decomp(&jd, dec_output, 0);
-        writer_flush();
-    }
-
-    fs_close(&dec.file);
-    return rc == JDR_OK ? 0 : -EIO;
+    fs_close(&file);
+    return ret;
 }

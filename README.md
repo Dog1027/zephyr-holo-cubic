@@ -22,6 +22,7 @@
 | SysInfo | 運行時間、heap、SD 卡容量、各 thread 的 stack 用量 | |
 | Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | `/config.txt`（Wi-Fi） |
 | Upload | 開著時在 port 80 跑 HTTP server，用瀏覽器或 curl 把檔案傳到 SD 卡（見下面） | `/config.txt`（Wi-Fi） |
+| Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上（`just cast`，見下面） | `/config.txt`（Wi-Fi） |
 | Test | 空的 app，給測試新功能用 | |
 
 ## 硬體
@@ -161,6 +162,19 @@ for f in out/cat/*; do curl -T "$f" http://192.168.1.20/anim/cat/; done
 
 資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字和 `._-+()` 與空白。速度大約 50 KB/s（TCP 接收視窗只有 3 KB），一張照片不到一秒。傳到一半斷線，沒傳完的檔案會被刪掉。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
 
+### 投影（Cast app）
+
+打開 Cast，畫面會顯示位址，例如 `192.168.1.20:8080`，然後在電腦上：
+
+```bash
+just cast 192.168.1.20 cat.gif                  # GIF 照原本的速度播
+just cast 192.168.1.20 ~/Pictures --hold 5      # 資料夾裡的圖片，每張 5 秒
+just cast 192.168.1.20 cat.gif --loop           # 重複播放，Ctrl+C 停止
+just cast 192.168.1.20 --screen --region 0,0,800,800   # 螢幕的一部分（X11）
+```
+
+圖片會先在電腦上縮小並轉成 baseline JPEG，方塊解碼後回一個 byte，電腦收到才送下一格，所以不會延遲累積。240x240 大約 5 fps，`--size 160x160` 大約 8 fps。投影結束後畫面回到說明。
+
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
 
 ### 設定檔 /config.txt
@@ -270,13 +284,13 @@ src/
   wlan.c                Wi-Fi 連線、掃描與 wlan 指令
   net_job.c             網路工作共用的背景 work queue
   net_time.c            SNTP 對時、時區與 ntp 指令
-  net_server.c          app 在 run() 裡用的 non-blocking TCP server（Upload）
+  net_server.c          app 在 run() 裡用的 non-blocking TCP server（Upload、Cast）
   weather.c             從 wttr.in 抓天氣（HTTP，邊收邊解析 JSON）與 weather 指令
   i2c_pullup.c          I2C 腳位的 RTC 內建上拉與開機時的 bus recovery
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
   apps/bg/app_menu.c    Menu
   apps/fg/              各個 app
-tools/                  圖片與動畫轉檔工具
+tools/                  圖片與動畫轉檔、投影（cast.py）與序列埠測試
 ```
 
 ## 注意事項
@@ -288,7 +302,9 @@ tools/                  圖片與動畫轉檔工具
 - **SPI 速度**：SD 卡的 MISO 在 GPIO 26，要經過 GPIO 矩陣，超過 20 MHz 讀不到正確資料。螢幕目前 30 MHz。
 - **I2C 維持 100 kHz**：板子上沒有外部上拉電阻，靠 ESP32 約 45 kΩ 的內建上拉（`src/i2c_pullup.c`），400 kHz 時 MPU6050 會初始化失敗。GPIO32/33 是 RTC pad，pinctrl 的 `bias-pull-up` 對它們沒有作用，上拉要設在 RTC_IO。
 - **重置後 IMU 讀不到**：ESP32 重置時 MPU6050 不會斷電，如果剛好卡在 I2C 讀取途中，它會一直拉著 SDA。開機時在 sensor 初始化之前先做一次 bus recovery 解決。
-- **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。
+- **網路工作不能在 app 裡做**：`run()` 不能阻塞，DNS、SNTP、HTTP 這類會等待的工作要丟到 `net_job_queue()`，app 只讀結果。例外是只在 app 開著時才需要的 server（Upload、Cast）：用 `net_server.h` 的 non-blocking socket 在 `run()` 裡處理，每次最多等幾十 ms，不另開 thread。
+- **socket 數量**：`CONFIG_NET_MAX_CONTEXTS` / `CONFIG_NET_MAX_CONN` 是 5。server 主動斷線的連線會在 TIME_WAIT 佔著一個約 1.5 秒，所以 Upload 盡量讓對方先斷線（被拒絕的上傳也先把資料讀完再回錯誤）。
+- **編譯器 bug**：Zephyr SDK 1.0.1 的 Xtensa GCC 14.3 會把 TJpgDec 裡 `pc += ix & 1` 編錯（-O1、-O2 都會），解碼時讀到 NULL 當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
 - **只能用 HTTP**：TLS 需要的記憶體放不下，所以網路服務都用純 HTTP。回應太大時要邊收邊解析（例如 `weather.c` 的 40 KB JSON 只用 512 B 的 buffer）。
 - **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩不到 1 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
 - **不要在 `SYS_INIT` 裡繪圖**：開了 LVGL flush thread 後，它要等所有 `SYS_INIT` 結束才會啟動，在那之前繪圖會讓開機卡死。第一次繪圖在 `app_thread` 裡的 `gui_start()`。

@@ -34,6 +34,10 @@ gif2jpg gif out size="240x240" quality="80" bg="000000":
 img2jpg in out size="240x240" quality="85" fit="cover":
     {{python}} {{topdir}}/tools/img2jpg.py "{{in}}" "{{out}}" --size {{size}} --quality {{quality}} --fit {{fit}}
 
+# Send images / GIFs / folders or the screen to the Cast app, e.g. just cast 192.168.1.20 cat.gif, just cast 192.168.1.20 --screen
+cast host *args:
+    {{python}} {{topdir}}/tools/cast.py {{host}} {{args}}
+
 # Reset the board, open and close every app over the shell, report errors and stack usage (close any serial monitor first)
 test:
     {{python}} {{topdir}}/tools/serial_test.py {{port}} {{build_dir}}/serial_test.log

@@ -70,6 +70,7 @@ plan = [
     ("SysInfo", ["ui next", "ui next", "ui next"]),
     ("Network", ["ui next", "ui next", "ui prev"]),
     ("Upload", ["ui next"]),
+    ("Cast", []),
     ("Test", ["ui tap"]),
 ]
 for app, extra in plan:
