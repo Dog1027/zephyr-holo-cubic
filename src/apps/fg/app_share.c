@@ -4,6 +4,8 @@
 #include "file.h"
 #include "wlan.h"
 #include "net_server.h"
+#include "nav.h"
+#include "prefs.h"
 #include <zephyr/fs/fs.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/random/random.h>
@@ -21,7 +23,8 @@
  *   PUT /<檔案>            上傳（POST 也可以），資料夾不存在就建立
  *   PUT /<資料夾>/         建立資料夾
  *   DELETE /<路徑>         刪除檔案或空的資料夾
- * 每次打開 app 產生一組 4 位數 PIN 顯示在螢幕上，用 cookie "pin=1234"（網頁）、
+ * 4 位數 PIN 顯示在螢幕上，存在 flash 所以每次都一樣（瀏覽器記住就不用再輸入），在 app 裡按 OK 換一組。
+ * PIN 用 cookie "pin=1234"（網頁）、
  * header "X-Pin: 1234" 或 "?pin=1234" 帶上來；連錯 SHARE_PIN_TRIES 次鎖一段時間。
  * 一次服務一個連線（keep-alive），全部在 run() 裡做。
  */
@@ -127,7 +130,7 @@ static const char page[] =
     "const sub=n=>(cwd?cwd+'/':'')+n;"
     "function pin(ask){if(ask||!/pin=\\d{4}/.test(document.cookie)){"
     "const v=prompt('PIN shown on the cube');if(!v)return false;"
-    "document.cookie='pin='+v.trim()+';path=/;SameSite=Strict'}return true}"
+    "document.cookie='pin='+v.trim()+';path=/;max-age=31536000;SameSite=Strict'}return true}"
     "async function api(method,url){for(;;){const r=await fetch(url,{method});"
     "if(r.status!=401||!pin(true))return r}}"
     "function say(t){const e=document.createElement('div');e.textContent=t;$('log').prepend(e);return e}"
@@ -916,15 +919,46 @@ static void ui_update(void)
     ui_label_set_fmt(self->total_label, "Up %d   Down %d", self->uploads, self->downloads);
 }
 
+#define SHARE_PIN_KEY   "share/pin"
+#define SHARE_HINT      "Enter the PIN once.  OK: new PIN"
+
+// 換一組 PIN，舊的馬上失效（瀏覽器會再問一次）
+static void pin_new(void)
+{
+    self->pin = sys_rand32_get() % 10000;
+    self->pin_fails = 0;
+    self->pin_lock_until = 0;
+    prefs_save(SHARE_PIN_KEY, &self->pin, sizeof(self->pin));
+}
+
+static void pin_show(void)
+{
+    ui_label_set_fmt(self->pin_label, "%04d", self->pin);
+    // 序列埠要接線才看得到，跟看螢幕一樣要人在旁邊；自動測試靠這行拿 PIN
+    LOG_INF("PIN %04d", self->pin);
+}
+
+static bool nav_cb(nav_cmd_t cmd)
+{
+    if (cmd != NAV_OK) {
+        return false;
+    }
+    pin_new();
+    pin_show();
+    ui_status("New PIN");
+    return true;
+}
+
 static void app_share_init(void *scr)
 {
     ui_screen_init(scr);
     ui_title(scr, "Share");
     self->listen_fd = -1;
     self->fd = -1;
-    self->pin = sys_rand32_get() % 10000;
-    // 序列埠要接線才看得到，跟看螢幕一樣要人在旁邊；自動測試靠這行拿 PIN
-    LOG_INF("PIN %04d", self->pin);
+    if (prefs_load(SHARE_PIN_KEY, &self->pin, sizeof(self->pin)) != sizeof(self->pin) || self->pin < 0 ||
+        self->pin > 9999) {
+        pin_new();
+    }
 
     self->url_label = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
     lv_obj_align(self->url_label, LV_ALIGN_CENTER, 0, -62);
@@ -932,7 +966,7 @@ static void app_share_init(void *scr)
     self->pin_label = ui_label(scr, &lv_font_montserrat_48, SHARE_ACCENT_COLOR);
     lv_obj_set_style_text_letter_space(self->pin_label, 4, 0);
     lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, -22);
-    ui_label_set_fmt(self->pin_label, "%04d", self->pin);
+    pin_show();
 
     self->status_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 18);
@@ -952,10 +986,11 @@ static void app_share_init(void *scr)
     self->total_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
     lv_obj_align(self->total_label, LV_ALIGN_BOTTOM_MID, 0, -14);
 
-    ui_status("Open the address, enter the PIN");
+    ui_status(SHARE_HINT);
     self->online = wlan_is_online();
     listen_update(self->online);
     ui_update();
+    nav_set_handler(nav_cb);
 }
 
 static void app_share_run(void *scr)
@@ -966,7 +1001,7 @@ static void app_share_run(void *scr)
     if (online != self->online) {
         self->online = online;
         listen_update(online);
-        ui_status(online ? "Open the address, enter the PIN" : "Waiting for Wi-Fi");
+        ui_status(online ? SHARE_HINT : "Waiting for Wi-Fi");
         self->ui_dirty = true;
     }
     else if (online && self->listen_fd < 0) {

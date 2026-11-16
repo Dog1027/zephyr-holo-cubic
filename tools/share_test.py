@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Test the Share app on the real device: reset, open Share, read the PIN from the log, then
 list / upload / download / mkdir / delete with curl and check the PIN rules.
+Note: it ends by pressing OK in the app, so the cube has a new PIN afterwards.
 
 Usage: share_test.py PORT
 Needs Wi-Fi (the cube and this computer on the same network) and curl. Takes about a minute,
@@ -80,7 +81,13 @@ codes=[curl(B+"/?list","-b","pin="+wrong,pin_=False)[0] for _ in range(5)]; chec
 c,b,*_=curl(B+"/?list"); check("locked after 5 wrong PINs (429 even with the right one)", c==429, c)
 read_for(31)
 c,b,*_=curl(B+"/?list"); check("unlocked after 30 s", c==200, c)
-t=cmd("app close",1.5)
+cmd("app close",1.5)
+again=re.search(r"PIN (\d{4})",cmd("app open Share",2.5)).group(1); check("same PIN after reopening", again==pin, again)
+new=re.search(r"PIN (\d{4})",cmd("ui ok",1.5)).group(1); check("OK makes a new PIN", new!=pin, new)
+c,b,*_=curl(B+"/?list"); check("old PIN no longer works", c==401, c)
+pin=new
+c,b,*_=curl(B+"/?list"); check("new PIN works", c==200, c)
+cmd("app close",1.5)
 log.close()
 errs=[l for l in open(T+"/share_serial.log").read().splitlines() if re.search(r"<err>|FATAL",l)]
 check("no errors on the serial log", not errs, errs[:3])
