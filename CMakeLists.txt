@@ -28,5 +28,6 @@ target_sources(app PRIVATE
   src/wlan.c
   src/net_time.c
   src/weather.c
+  src/net_server.c
   src/lib/tjpgd/tjpgd.c
 )

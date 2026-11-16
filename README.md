@@ -21,6 +21,7 @@
 | Timer | 計時器，翻面朝下會暫停，離開 app 也會繼續計時 | |
 | SysInfo | 運行時間、heap、SD 卡容量、各 thread 的 stack 用量 | |
 | Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | `/config.txt`（Wi-Fi） |
+| Upload | 開著時在 port 80 跑 HTTP server，用瀏覽器或 curl 把檔案傳到 SD 卡（見下面） | `/config.txt`（Wi-Fi） |
 | Test | 空的 app，給測試新功能用 | |
 
 ## 硬體
@@ -146,6 +147,20 @@ just gif2jpg cat.gif out/cat 120x120
 /config.txt             設定檔（Wi-Fi、時區），格式見下面
 ```
 
+### 用 Wi-Fi 上傳（Upload app）
+
+不用拔 SD 卡：打開 Upload，畫面會顯示網址，例如 `http://192.168.1.20/`。
+
+- **瀏覽器**：打開網址，填資料夾（預設 `photo`，空白是根目錄），選檔案按 Upload，會顯示每個檔案的進度。
+- **curl**：網址結尾是 `/` 時 curl 會自動接上檔名。
+
+```bash
+curl -T cat.jpg http://192.168.1.20/photo/
+for f in out/cat/*; do curl -T "$f" http://192.168.1.20/anim/cat/; done
+```
+
+資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字和 `._-+()` 與空白。速度大約 50 KB/s（TCP 接收視窗只有 3 KB），一張照片不到一秒。傳到一半斷線，沒傳完的檔案會被刪掉。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
+
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
 
 ### 設定檔 /config.txt
@@ -255,6 +270,7 @@ src/
   wlan.c                Wi-Fi 連線、掃描與 wlan 指令
   net_job.c             網路工作共用的背景 work queue
   net_time.c            SNTP 對時、時區與 ntp 指令
+  net_server.c          app 在 run() 裡用的 non-blocking TCP server（Upload）
   weather.c             從 wttr.in 抓天氣（HTTP，邊收邊解析 JSON）與 weather 指令
   i2c_pullup.c          I2C 腳位的 RTC 內建上拉與開機時的 bus recovery
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）

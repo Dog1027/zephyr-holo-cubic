@@ -69,6 +69,7 @@ plan = [
     ("Timer", ["ui next", "ui next"]),
     ("SysInfo", ["ui next", "ui next", "ui next"]),
     ("Network", ["ui next", "ui next", "ui prev"]),
+    ("Upload", ["ui next"]),
     ("Test", ["ui tap"]),
 ]
 for app, extra in plan:
