@@ -21,6 +21,9 @@ bool net_time_now(struct tm *tm);
 // Seconds since 1970 (UTC), -1 until the first sync
 int64_t net_time_unix(void);
 
+// The same in milliseconds, for things that move within a second
+int64_t net_time_unix_ms(void);
+
 // Read tz from the config again (it is otherwise read at boot and at every sync)
 void net_time_load_tz(void);
 

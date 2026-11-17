@@ -6,8 +6,9 @@
 #include "wlan.h"
 
 #define CLOCK_ACCENT_COLOR  THEME_CYAN
-#define CLOCK_ARC_SIZE      220
+#define CLOCK_ARC_SIZE      200
 #define CLOCK_ARC_WIDTH     6
+#define CLOCK_ARC_STEP_MS    50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
 
 typedef struct {
     lv_obj_t *arc;
@@ -16,6 +17,7 @@ typedef struct {
     lv_obj_t *date_label;
     lv_obj_t *status_label;
     int64_t shown_key;  // 上次畫面對應的時間（秒），-1 表示要重畫
+    int32_t shown_arc;
     bool shown_synced;
     bool hour24;
     bool pending_toggle;
@@ -50,7 +52,6 @@ static void show_time(const struct tm *tm)
     lv_label_set_text_fmt(self->date_label, "%s  %d %s %d", net_time_wday_names[tm->tm_wday], tm->tm_mday,
                           net_time_month_names[tm->tm_mon], tm->tm_year + 1900);
     lv_label_set_text(self->status_label, "");
-    lv_arc_set_value(self->arc, tm->tm_sec);
     // AM / PM 跟在時間右下方，時間的寬度會變
     lv_obj_align_to(self->ampm_label, self->time_label, LV_ALIGN_OUT_RIGHT_BOTTOM, 4, -8);
 }
@@ -77,13 +78,13 @@ static void app_clock_init(void *scr)
     // tz 可能在電腦上改過，每次打開都重讀
     net_time_load_tz();
 
-    // 秒數圓環：0 到 59 秒走一圈
+    // 秒數圓環：一分鐘走一圈，單位是 CLOCK_ARC_STEP_MS
     self->arc = lv_arc_create(scr);
     lv_obj_set_size(self->arc, CLOCK_ARC_SIZE, CLOCK_ARC_SIZE);
     lv_obj_center(self->arc);
     lv_arc_set_rotation(self->arc, 270);
     lv_arc_set_bg_angles(self->arc, 0, 360);
-    lv_arc_set_range(self->arc, 0, 59);
+    lv_arc_set_range(self->arc, 0, 60000 / CLOCK_ARC_STEP_MS);
     lv_obj_remove_style(self->arc, NULL, LV_PART_KNOB);
     lv_obj_set_clickable(self->arc, false);
     lv_obj_set_style_arc_width(self->arc, CLOCK_ARC_WIDTH, LV_PART_MAIN);
@@ -101,6 +102,7 @@ static void app_clock_init(void *scr)
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 34);
 
     self->shown_key = -1;
+    self->shown_arc = -1;
     nav_set_handler(nav_cb);
 }
 
@@ -116,9 +118,19 @@ static void app_clock_run(void *scr)
         self->shown_key = -1;
     }
 
-    // 每秒最多重畫一次：對時前用開機秒數（只是更新 Wi-Fi 狀態），對時後用實際時間
+    // 文字每秒最多重畫一次：對時前用開機秒數（只是更新 Wi-Fi 狀態），對時後用實際時間
     bool synced = net_time_now(&tm);
-    int64_t key = synced ? net_time_unix() : k_uptime_get() / 1000;
+    int64_t ms = net_time_unix_ms();
+    int64_t key = synced ? ms / 1000 : k_uptime_get() / 1000;
+
+    // 圓環只重畫前進的那一小段，可以更新得比文字細
+    if (synced) {
+        int32_t arc = (int32_t)(ms % 60000) / CLOCK_ARC_STEP_MS;
+        if (arc != self->shown_arc) {
+            self->shown_arc = arc;
+            lv_arc_set_value(self->arc, arc);
+        }
+    }
     if (synced == self->shown_synced && key == self->shown_key) {
         return;
     }

@@ -71,14 +71,21 @@ void net_time_load_tz(void)
     tz_offset_s = offset;
 }
 
-int64_t net_time_unix(void)
+int64_t net_time_unix_ms(void)
 {
     struct timespec ts;
 
     if (!synced || sys_clock_gettime(SYS_CLOCK_REALTIME, &ts) < 0) {
         return -1;
     }
-    return ts.tv_sec;
+    return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+int64_t net_time_unix(void)
+{
+    int64_t ms = net_time_unix_ms();
+
+    return ms < 0 ? -1 : ms / 1000;
 }
 
 bool net_time_now(struct tm *tm)
