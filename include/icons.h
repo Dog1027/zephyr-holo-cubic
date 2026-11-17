@@ -16,8 +16,7 @@ extern const lv_font_t font_icons;
 #define ICON_DICE     "\xF3\xB0\x87\x8E"  // dice-5
 #define ICON_LIGHT    "\xF3\xB0\x9B\xA8"  // lightbulb-on
 #define ICON_TIMER    "\xF3\xB0\x94\x9B"  // timer-outline
-#define ICON_SYSINFO  "\xF3\xB0\x8D\x9B"  // memory
-#define ICON_NETWORK  "\xF3\xB0\x96\xA9"  // wifi
+#define ICON_SYSTEM   "\xF3\xB0\x8D\x9B"  // memory
 #define ICON_SHARE    "\xF3\xB0\xA1\xB0"  // folder-network
 #define ICON_CAST     "\xF3\xB0\x84\x98"  // cast
 #define ICON_AQUARIUM "\xF3\xB0\xBC\x81"  // jellyfish

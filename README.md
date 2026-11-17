@@ -20,10 +20,10 @@
 | Dice | 骰子，以及從 `/lots.txt` 抽籤 |
 | Light | 用 RGB LED 當氣氛燈 |
 | Timer | 計時器，翻面朝下暫停 |
-| SysInfo | heap、SD 卡容量、各 thread 的 stack 用量 |
-| Network | 訊號強度、IP，掃描附近的網路 |
+| System | SYSTEM 分頁：heap、SD 卡容量、各 thread 的 stack 用量；NETWORK 分頁：訊號強度、IP，掃描附近的網路。敲一下切換分頁 |
 | Share | 網頁版的 SD 卡檔案管理 |
 | Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上 |
+| Aquarium | 水母和微生物，敲一下或 OK 撒飼料 |
 | Test | 空的 app，測試新功能用 |
 
 ## 硬體

@@ -194,11 +194,24 @@ lv_obj_t *ui_tabs(lv_obj_t *scr, const char *const names[], int count, lv_color_
         lv_label_set_text(label, names[i]);
         lv_obj_center(label);
 
+        if (focused_cb == NULL) {
+            // 只用來顯示，由 app 用 ui_tabs_select() 切換
+            lv_obj_set_clickable(tab, false);
+            continue;
+        }
         lv_obj_add_event_cb(tab, focused_cb, LV_EVENT_FOCUSED, (void *)(intptr_t)i);
         lv_obj_add_event_cb(tab, clicked_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         lv_group_add_obj(lv_group_get_default(), tab);
     }
     return tabs;
+}
+
+void ui_tabs_select(lv_obj_t *tabs, int index)
+{
+    uint32_t count = lv_obj_get_child_count(tabs);
+    for (uint32_t i = 0; i < count; i++) {
+        lv_obj_set_state(lv_obj_get_child(tabs, i), LV_STATE_FOCUSED, i == (uint32_t)index);
+    }
 }
 
 lv_obj_t *ui_tap_area(lv_obj_t *scr, lv_event_cb_t cb, void *user_data)

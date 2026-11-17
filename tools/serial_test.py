@@ -66,10 +66,10 @@ plan = [
     ("Dice", ["ui tap", "ui next", "ui ok", "ui prev"]),
     ("Light", ["ui next", "ui next", "ui prev"]),
     ("Timer", ["ui next", "ui next"]),
-    ("SysInfo", ["ui next", "ui next", "ui next"]),
-    ("Network", ["ui next", "ui next", "ui prev"]),
+    ("System", ["ui next", "ui next", "ui tap", "ui next", "ui ok", "ui tap"]),
     ("Share", ["ui next"]),
     ("Cast", []),
+    ("Aquarium", ["ui tap", "ui ok"]),
     ("Test", ["ui tap"]),
 ]
 for app, extra in plan:

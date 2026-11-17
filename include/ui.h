@@ -42,8 +42,13 @@ lv_obj_t *ui_list_message(lv_obj_t *list, const char *text);
 // OK clicks the highlighted one. Both callbacks get the tab's index as user data
 // (lv_event_get_user_data). Adding the first tab to the group focuses it, so focused_cb runs
 // for tab 0 inside this call: create what it shows first. Tab i is lv_obj_get_child(tabs, i).
+// With focused_cb NULL the tabs only show the mode and stay out of the group, for apps whose
+// next / prev move inside a list (System): switch them with ui_tabs_select().
 lv_obj_t *ui_tabs(lv_obj_t *scr, const char *const names[], int count, lv_color_t accent,
                   lv_event_cb_t focused_cb, lv_event_cb_t clicked_cb);
+
+// Highlight tab index of display-only tabs
+void ui_tabs_select(lv_obj_t *tabs, int index);
 
 // Invisible full screen object in the default group, receives OK (ui ok) when nothing else is selectable
 lv_obj_t *ui_tap_area(lv_obj_t *scr, lv_event_cb_t cb, void *user_data);
