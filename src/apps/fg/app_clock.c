@@ -5,7 +5,7 @@
 #include "net_time.h"
 #include "wlan.h"
 
-#define CLOCK_ACCENT_COLOR  0x2ec4d6
+#define CLOCK_ACCENT_COLOR  THEME_CYAN
 #define CLOCK_ARC_SIZE      220
 #define CLOCK_ARC_WIDTH     6
 
@@ -88,16 +88,16 @@ static void app_clock_init(void *scr)
     lv_obj_set_clickable(self->arc, false);
     lv_obj_set_style_arc_width(self->arc, CLOCK_ARC_WIDTH, LV_PART_MAIN);
     lv_obj_set_style_arc_width(self->arc, CLOCK_ARC_WIDTH, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_color(self->arc, lv_color_hex(UI_DIM_COLOR), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(self->arc, lv_color_hex(THEME_TEXT_DIM), LV_PART_MAIN);
     lv_obj_set_style_arc_opa(self->arc, LV_OPA_30, LV_PART_MAIN);
     lv_obj_set_style_arc_color(self->arc, lv_color_hex(CLOCK_ACCENT_COLOR), LV_PART_INDICATOR);
 
-    self->time_label = ui_label(scr, &lv_font_montserrat_48, 0xffffff);
+    self->time_label = ui_label(scr, &lv_font_montserrat_48, THEME_TEXT);
     lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
     self->ampm_label = ui_label(scr, &lv_font_montserrat_14, CLOCK_ACCENT_COLOR);
-    self->date_label = ui_label(scr, &lv_font_montserrat_18, UI_DIM_COLOR);
+    self->date_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT_DIM);
     lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, 34);
-    self->status_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->status_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 34);
 
     self->shown_key = -1;

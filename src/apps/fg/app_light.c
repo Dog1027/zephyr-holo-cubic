@@ -47,7 +47,7 @@ static void styles_init(void)
     lv_style_set_size(&style_dot, LIGHT_DOT_SIZE, LIGHT_DOT_SIZE);
     lv_style_set_radius(&style_dot, LV_RADIUS_CIRCLE);
     lv_style_set_bg_opa(&style_dot, LV_OPA_COVER);
-    lv_style_set_border_color(&style_dot, lv_color_hex(UI_DIM_COLOR));
+    lv_style_set_border_color(&style_dot, lv_color_hex(THEME_TEXT_DIM));
 
     lv_style_init(&style_dot_focused);
     lv_style_set_transform_width(&style_dot_focused, 5);
@@ -67,7 +67,7 @@ static void preview_show(int index)
     lv_obj_set_style_border_width(self->preview, index == LIGHT_OFF ? 2 : 0, 0);
     lv_label_set_text(self->name_label, colors[index].name);
     // 文字顏色設在 preview 上，兩個 label 一起繼承
-    lv_obj_set_style_text_color(self->preview, lv_color_hex(index == LIGHT_OFF ? UI_DIM_COLOR : UI_BG_COLOR), 0);
+    lv_obj_set_style_text_color(self->preview, lv_color_hex(index == LIGHT_OFF ? THEME_TEXT_DIM : THEME_BG), 0);
     lv_label_set_text(self->state_label, index == self->saved ? "Current" : "OK to set");
 }
 
@@ -108,7 +108,7 @@ static void app_light_init(void *scr)
     lv_obj_set_size(self->preview, LIGHT_PREVIEW_SIZE, LIGHT_PREVIEW_SIZE);
     lv_obj_set_style_radius(self->preview, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_opa(self->preview, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(self->preview, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_border_color(self->preview, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_center(self->preview);
     lv_obj_set_scrollable(self->preview, false);
     lv_obj_set_clickable(self->preview, false);

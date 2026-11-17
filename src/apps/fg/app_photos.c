@@ -15,8 +15,7 @@
 #define PHOTO_SLIDE_MS        5000    // 幻燈片模式每張停留時間
 #define PHOTO_START_DELAY_MS  50      // 淡入動畫結束後再多等一下才開始直接畫
 #define PHOTO_BLINK_MS        150
-#define PHOTO_BLINK_COLOR     0x2ec4d6
-#define PHOTO_DETAIL_COLOR    0xaab4c8
+#define PHOTO_BLINK_COLOR     THEME_CYAN
 
 typedef struct {
     lv_obj_t *scr;
@@ -109,13 +108,13 @@ static int photos_load(void)
 // 黑底上暗色的小字透過稜鏡幾乎看不到：主要的一行用白色大字，說明用亮一點的灰
 static void message_show(const char *text, const char *detail)
 {
-    lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_18, 0xffffff);
+    lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_18, THEME_TEXT);
 
     lv_label_set_text(label, text);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, -36);
 
-    label = ui_label(self->scr, &lv_font_montserrat_14, PHOTO_DETAIL_COLOR);
+    label = ui_label(self->scr, &lv_font_montserrat_14, THEME_TEXT_SECONDARY);
     lv_label_set_text(label, detail);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, 24);
@@ -175,7 +174,7 @@ static bool nav_cb(nav_cmd_t cmd)
 static void app_photos_init(void *scr)
 {
     ui_screen_init(scr);
-    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BLACK), 0);
     self->scr = scr;
 
     self->start_ms = k_uptime_get();

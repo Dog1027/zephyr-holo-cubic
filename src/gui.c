@@ -5,6 +5,7 @@
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
 #include "gui.h"
+#include "theme.h"
 
 LOG_MODULE_REGISTER(gui, CONFIG_CUBE_LOG_LEVEL);
 
@@ -13,7 +14,7 @@ static const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display
 static void gui_clear_screen(void)
 {
     lv_obj_t *scr = lv_screen_active();
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BLACK), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
 }
 

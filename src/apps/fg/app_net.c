@@ -4,7 +4,7 @@
 #include <zephyr/net/wifi.h>
 #include <stdio.h>
 
-#define NET_ACCENT_COLOR    0x4f8ef7
+#define NET_ACCENT_COLOR    THEME_BLUE
 #define NET_REFRESH_MS      1000
 #define NET_CHART_POINTS    60      // 每秒一點，一分鐘
 #define NET_CHART_HEIGHT    56
@@ -117,7 +117,7 @@ static lv_obj_t *chart_create(void)
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
     lv_obj_set_style_pad_all(obj, 2, 0);
-    lv_obj_set_style_line_color(obj, lv_color_hex(UI_DIM_COLOR), LV_PART_MAIN);
+    lv_obj_set_style_line_color(obj, lv_color_hex(THEME_TEXT_DIM), LV_PART_MAIN);
     lv_obj_set_style_line_opa(obj, LV_OPA_30, LV_PART_MAIN);
     lv_obj_set_style_line_width(obj, 2, LV_PART_ITEMS);
     // 不畫每個點的圓點，只畫線

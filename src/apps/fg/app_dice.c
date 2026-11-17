@@ -17,7 +17,7 @@
 #define ROLL_MS             700   // 停止搖晃後再滾這麼久才停
 #define ROLL_STEP_MS        60
 #define LED_HOLD_MS         800
-#define DICE_ACCENT_COLOR   0xf25f5c
+#define DICE_ACCENT_COLOR   THEME_RED
 
 enum { MODE_DICE, MODE_LOTS };
 
@@ -64,17 +64,17 @@ static void styles_init(void)
     lv_style_init(&style_tab);
     lv_style_set_size(&style_tab, 90, 28);
     lv_style_set_radius(&style_tab, LV_RADIUS_CIRCLE);
-    lv_style_set_border_color(&style_tab, lv_color_hex(UI_DIM_COLOR));
+    lv_style_set_border_color(&style_tab, lv_color_hex(THEME_TEXT_DIM));
     lv_style_set_border_width(&style_tab, 1);
     lv_style_set_bg_color(&style_tab, lv_color_hex(DICE_ACCENT_COLOR));
     lv_style_set_bg_opa(&style_tab, LV_OPA_TRANSP);
-    lv_style_set_text_color(&style_tab, lv_color_hex(UI_DIM_COLOR));
+    lv_style_set_text_color(&style_tab, lv_color_hex(THEME_TEXT_DIM));
     lv_style_set_text_font(&style_tab, &lv_font_montserrat_14);
 
     lv_style_init(&style_tab_focused);
     lv_style_set_bg_opa(&style_tab_focused, LV_OPA_COVER);
     lv_style_set_border_width(&style_tab_focused, 0);
-    lv_style_set_text_color(&style_tab_focused, lv_color_hex(UI_BG_COLOR));
+    lv_style_set_text_color(&style_tab_focused, lv_color_hex(THEME_BG));
 }
 
 static void lots_load(void)
@@ -211,7 +211,7 @@ static void app_dice_init(void *scr)
         lv_obj_remove_style_all(self->pips[i]);
         lv_obj_set_size(self->pips[i], DICE_PIP_SIZE, DICE_PIP_SIZE);
         lv_obj_set_style_radius(self->pips[i], LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(self->pips[i], lv_color_hex(UI_BG_COLOR), 0);
+        lv_obj_set_style_bg_color(self->pips[i], lv_color_hex(THEME_BG), 0);
         lv_obj_set_style_bg_opa(self->pips[i], LV_OPA_COVER, 0);
         lv_obj_align(self->pips[i], LV_ALIGN_CENTER, pip_pos[i][0] * DICE_PIP_OFFSET, pip_pos[i][1] * DICE_PIP_OFFSET);
         lv_obj_set_clickable(self->pips[i], false);
@@ -222,13 +222,13 @@ static void app_dice_init(void *scr)
     lv_obj_set_width(self->lot_label, 200);
     lv_label_set_long_mode(self->lot_label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(self->lot_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(self->lot_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(self->lot_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, 6);
 
     lv_obj_t *hint = lv_label_create(scr);
     lv_label_set_text(hint, "Tap or shake");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(hint, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(hint, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -12);
 
     lv_obj_t *tabs = lv_obj_create(scr);

@@ -264,6 +264,7 @@ tz=+8
 - **可選取的物件**要加進 `lv_group_get_default()`，並移除 `LV_OBJ_FLAG_SCROLLABLE`，選取時會收到 `LV_EVENT_CLICKED`。`ui_list_item()` 和 `ui_tap_area()` 已經處理好這些。
 - **新增圖示**：圖示是 Material Design Icons 做成的小字型（72 px，只含用到的十幾個，約 26 KB flash）。在 `tools/mkicons.py` 的 `ICONS` 加一行（名稱和代碼查 nerdfonts.com 的 cheat sheet，`nf-md-*`），然後執行 `uv run python tools/mkicons.py <任一個 Nerd Font Propo 字型檔> --preview icons.png`，會重新產生 `src/icons.c` 和 `include/icons.h`。`ICON_*` 只能用在 Menu 圖示，其他地方的小符號照舊用 `LV_SYMBOL_*`。
 - **想自己處理 next / prev / ok / 敲擊**（例如換照片）：在 `init` 呼叫 `nav_set_handler()`，回傳 `true` 表示已處理；app 關閉時框架會自動清掉。
+- **顏色一律用 `theme.h`**：不要在 app 裡寫 `0xRRGGBB`。背景 `THEME_BG`，文字分三級（`THEME_TEXT` 白、`THEME_TEXT_SECONDARY` 說明文字、`THEME_TEXT_DIM` 只當裝飾，透過稜鏡幾乎看不到），強調色從 7 個裡挑一個（`THEME_BLUE` … `THEME_YELLOW`），有含意的用 `THEME_OK` / `THEME_WARNING` / `THEME_ERROR`。要調整整體配色只改這一個檔。
 - **常用的共用函式**，先找這裡再自己寫：
   - `ui.h`：`ui_label()`（字型 + 顏色）、`ui_label_set_fmt()`（文字有變才更新）、`ui_list_row()`（右邊帶數值的列表項）。
   - `led.h`：`led_flash()` 亮一下再自動回到底色。
@@ -283,7 +284,7 @@ src/
   tool.c                shell 指令：app、ui、tool
   input.c               MPU6050 姿態角與敲擊偵測
   gui.c                 螢幕與背光初始化
-  ui.c                  共用的 LVGL 元件（標題、清單）
+  ui.c                  共用的 LVGL 元件（標題、清單）；顏色在 include/theme.h
   icons.c               Menu 的 app 圖示字型（tools/mkicons.py 產生，不要手改）
   jpeg.c                JPEG 解碼後直接寫到螢幕
   led.c                 RGB LED 與基礎顏色

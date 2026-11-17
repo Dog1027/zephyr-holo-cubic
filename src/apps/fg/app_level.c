@@ -12,8 +12,8 @@
 #define LEVEL_BUBBLE_SIZE   28
 #define LEVEL_FULL_DEG      20.0f  // 傾斜這麼多度時氣泡碰到外圈
 #define LEVEL_OK_DEG        1.0f   // 兩軸都在這個角度內算水平
-#define LEVEL_OK_COLOR      0x43c59e
-#define LEVEL_TILT_COLOR    0xf5a623
+#define LEVEL_OK_COLOR      THEME_OK
+#define LEVEL_TILT_COLOR    THEME_WARNING
 
 typedef struct {
     lv_obj_t *mode_label;
@@ -43,7 +43,7 @@ static void line_create(lv_obj_t *parent, int32_t w, int32_t h)
     lv_obj_t *obj = circle_create(parent, 0);
     lv_obj_set_size(obj, w, h);
     lv_obj_set_style_radius(obj, 0, 0);
-    lv_obj_set_style_bg_color(obj, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_bg_opa(obj, LV_OPA_50, 0);
     lv_obj_center(obj);
 }
@@ -87,7 +87,7 @@ static void app_level_init(void *scr)
     self->mode_label = ui_title(scr, "LEVEL");
 
     lv_obj_t *dial = circle_create(scr, LEVEL_DIAL_SIZE);
-    lv_obj_set_style_border_color(dial, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_border_color(dial, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_border_width(dial, 2, 0);
 
     line_create(scr, LEVEL_DIAL_SIZE, 1);
@@ -103,7 +103,7 @@ static void app_level_init(void *scr)
 
     self->angle_label = lv_label_create(scr);
     lv_obj_set_style_text_font(self->angle_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(self->angle_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(self->angle_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(self->angle_label, LV_ALIGN_BOTTOM_MID, 0, -4);
 
     ui_tap_area(scr, tap_cb, NULL);

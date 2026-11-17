@@ -1,9 +1,8 @@
 #pragma once
 
 #include <lvgl.h>
+#include "theme.h"
 
-#define UI_BG_COLOR     0x0b0f17
-#define UI_DIM_COLOR    0x5a6478
 #define UI_SCREEN_SIZE  240
 
 // Black background, no scrolling

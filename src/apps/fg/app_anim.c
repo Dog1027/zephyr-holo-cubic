@@ -12,7 +12,7 @@
 #define ANIM_PATH_MAX         128
 #define ANIM_MAX_ENTRIES      16
 #define ANIM_DEFAULT_DELAY_MS 100
-#define ANIM_ACCENT_COLOR     0x2ec4d6
+#define ANIM_ACCENT_COLOR     THEME_CYAN
 
 typedef struct {
     lv_obj_t *title;
@@ -140,7 +140,7 @@ static void play_stop(void)
 static void app_anim_init(void *scr)
 {
     ui_screen_init(scr);
-    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BLACK), 0);
     self->title = ui_title(scr, "Animations");
     self->list = ui_list_create(scr);
 

@@ -5,11 +5,12 @@
 #include "net_time.h"
 #include <string.h>
 
-#define WEATHER_ACCENT_COLOR    0xffc83d
-#define SUN_COLOR               0xffc83d
+#define WEATHER_ACCENT_COLOR    THEME_YELLOW
+#define SUN_COLOR               THEME_YELLOW
+// 天氣圖示本身的顏色（畫雲用），不是介面的顏色，所以留在這裡
 #define CLOUD_COLOR             0xdfe6ee
 #define DARK_CLOUD_COLOR        0x8a95a6
-#define RAIN_COLOR              0x4f8ef7
+#define RAIN_COLOR              THEME_BLUE
 #define BIG_ICON_SIZE           76
 #define SMALL_ICON_SIZE         30
 #define DAY_COLUMN_WIDTH        76
@@ -207,20 +208,20 @@ static void app_weather_init(void *scr)
     self->shown_state = -1;
     ui_screen_init(scr);
 
-    self->area = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->area = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(self->area, LV_ALIGN_TOP_MID, 0, 14);
 
     self->icon = icon_create(scr, BIG_ICON_SIZE);
     lv_obj_align(self->icon, LV_ALIGN_TOP_LEFT, 22, 38);
-    self->temp = ui_label(scr, &lv_font_montserrat_48, 0xffffff);
+    self->temp = ui_label(scr, &lv_font_montserrat_48, THEME_TEXT);
     lv_obj_align(self->temp, LV_ALIGN_TOP_LEFT, 112, 50);
 
-    self->desc = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
+    self->desc = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_width(self->desc, UI_SCREEN_SIZE - 24);
     lv_label_set_long_mode(self->desc, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(self->desc, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(self->desc, LV_ALIGN_TOP_MID, 0, 120);
-    self->detail = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->detail = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(self->detail, LV_ALIGN_TOP_MID, 0, 146);
 
     // 三天預報，一天一欄
@@ -231,7 +232,7 @@ static void app_weather_init(void *scr)
         lv_obj_align(d->name, LV_ALIGN_TOP_MID, x, 172);
         d->icon = icon_create(scr, SMALL_ICON_SIZE);
         lv_obj_align(d->icon, LV_ALIGN_TOP_MID, x, 190);
-        d->temp = ui_label(scr, &lv_font_montserrat_14, 0xffffff);
+        d->temp = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT);
         lv_obj_align(d->temp, LV_ALIGN_TOP_MID, x, 220);
     }
 
@@ -239,16 +240,16 @@ static void app_weather_init(void *scr)
     lv_obj_set_size(self->spinner, 72, 72);
     lv_obj_align(self->spinner, LV_ALIGN_CENTER, 0, -34);
     lv_obj_set_style_arc_width(self->spinner, 6, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(self->spinner, lv_color_hex(0x1c2333), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(self->spinner, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_arc_width(self->spinner, 6, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(self->spinner, lv_color_hex(WEATHER_ACCENT_COLOR), LV_PART_INDICATOR);
     lv_obj_set_hidden(self->spinner, true);
 
-    self->status = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
+    self->status = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_style_text_align(self->status, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(self->status, LV_ALIGN_CENTER, 0, 34);
 
-    self->hint = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->hint = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_set_style_text_align(self->hint, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(self->hint, LV_ALIGN_CENTER, 0, 68);
 

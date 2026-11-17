@@ -161,16 +161,16 @@ static void listen_update(void)
 static void app_cast_init(void *scr)
 {
     ui_screen_init(scr);
-    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BLACK), 0);
     ui_title(scr, "Cast");
     self->listen_fd = -1;
     self->fd = -1;
     self->start_ms = k_uptime_get();
 
-    self->addr_label = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
+    self->addr_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_align(self->addr_label, LV_ALIGN_CENTER, 0, -20);
 
-    self->info_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->info_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_set_style_text_align(self->info_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(self->info_label, LV_ALIGN_CENTER, 0, 34);
 

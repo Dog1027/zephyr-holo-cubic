@@ -8,7 +8,7 @@
 #define FILES_ROOT          FILE_ROOT
 #define FILES_PATH_MAX      128
 #define FILES_MAX_ENTRIES   24  // 每個 item 都佔 LVGL 記憶體，太多會耗盡 pool
-#define FILES_ACCENT_COLOR  0xf5a623
+#define FILES_ACCENT_COLOR  THEME_ORANGE
 
 typedef struct {
     lv_obj_t *path_label;

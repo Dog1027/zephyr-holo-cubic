@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define SYSINFO_ACCENT_COLOR    0x9b6cf2
+#define SYSINFO_ACCENT_COLOR    THEME_PURPLE
 #define SYSINFO_REFRESH_MS      500
 #define SYSINFO_SD_REFRESH_MS   5000
 #define SYSINFO_SD_PATH         FILE_ROOT

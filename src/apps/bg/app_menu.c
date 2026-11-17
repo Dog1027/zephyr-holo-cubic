@@ -7,14 +7,13 @@
 
 APP_BG_REGISTER(Menu, app_menu_init, app_menu_run);
 
-#define MENU_BG_GRAD_COLOR  0x18202e
 #define MENU_ICON_SIZE      96
 #define MENU_ICON_GAP       20
 #define MENU_ICON_GROW      12  // 被選到時每邊放大的像素
 #define MENU_ANIM_MS        180
 
 static const uint32_t accent_colors[] = {
-    0x4f8ef7, 0xf25f5c, 0x43c59e, 0xf5a623, 0x9b6cf2, 0x2ec4d6,
+    THEME_BLUE, THEME_RED, THEME_GREEN, THEME_ORANGE, THEME_PURPLE, THEME_CYAN,
 };
 
 static lv_style_t style_icon;
@@ -31,7 +30,7 @@ static int64_t status_key = -1;
 
 static lv_obj_t *status_label_create(lv_obj_t *scr, lv_align_t align, int32_t x)
 {
-    lv_obj_t *label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    lv_obj_t *label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(label, align, x, 14);
     return label;
 }
@@ -55,7 +54,7 @@ static void status_update(void)
         lv_label_set_text(clock_label, "");
     }
     lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
-    lv_obj_set_style_text_color(wifi_label, online ? lv_color_white() : lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(wifi_label, online ? lv_color_hex(THEME_TEXT) : lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_text_opa(wifi_label, online ? LV_OPA_COVER : LV_OPA_50, 0);
 }
 
@@ -77,7 +76,7 @@ static void styles_init(void)
     lv_style_set_size(&style_icon, MENU_ICON_SIZE, MENU_ICON_SIZE);
     lv_style_set_radius(&style_icon, 28);
     lv_style_set_bg_opa(&style_icon, LV_OPA_30);
-    lv_style_set_text_color(&style_icon, lv_color_white());
+    lv_style_set_text_color(&style_icon, lv_color_hex(THEME_TEXT));
     lv_style_set_text_opa(&style_icon, LV_OPA_50);
     lv_style_set_text_font(&style_icon, &font_icons);
     lv_style_set_transition(&style_icon, &tr);
@@ -91,7 +90,7 @@ static void styles_init(void)
     lv_style_init(&style_dot);
     lv_style_set_size(&style_dot, 6, 6);
     lv_style_set_radius(&style_dot, LV_RADIUS_CIRCLE);
-    lv_style_set_bg_color(&style_dot, lv_color_hex(UI_DIM_COLOR));
+    lv_style_set_bg_color(&style_dot, lv_color_hex(THEME_TEXT_DIM));
     lv_style_set_bg_opa(&style_dot, LV_OPA_COVER);
     lv_style_set_transition(&style_dot, &tr);
 
@@ -116,7 +115,7 @@ static void icon_focused_cb(lv_event_t *e)
         }
         else {
             lv_obj_remove_style(dot, &style_dot_active, 0);
-            lv_obj_set_style_bg_color(dot, lv_color_hex(UI_DIM_COLOR), 0);
+            lv_obj_set_style_bg_color(dot, lv_color_hex(THEME_TEXT_DIM), 0);
         }
     }
 }
@@ -152,8 +151,8 @@ static void app_menu_init(void *scr)
 {
     styles_init();
 
-    lv_obj_set_style_bg_color(scr, lv_color_hex(UI_BG_COLOR), 0);
-    lv_obj_set_style_bg_grad_color(scr, lv_color_hex(MENU_BG_GRAD_COLOR), 0);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BG), 0);
+    lv_obj_set_style_bg_grad_color(scr, lv_color_hex(THEME_BG_RAISED), 0);
     lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_scrollable(scr, false);
@@ -161,7 +160,7 @@ static void app_menu_init(void *scr)
     lv_obj_t *title = lv_label_create(scr);
     lv_label_set_text(title, "CUBE");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_text_letter_space(title, 4, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 14);
 
@@ -185,7 +184,7 @@ static void app_menu_init(void *scr)
     lv_obj_set_scroll_elastic(carousel, false);
 
     name_label = lv_label_create(scr);
-    lv_obj_set_style_text_color(name_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(name_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(name_label, LV_ALIGN_BOTTOM_MID, 0, -42);
 
     dots = lv_obj_create(scr);
@@ -209,7 +208,7 @@ static void app_menu_init(void *scr)
 
     if (lv_obj_get_child_count(carousel) == 0) {
         lv_label_set_text(name_label, "No apps");
-        lv_obj_set_style_text_color(name_label, lv_color_hex(UI_DIM_COLOR), 0);
+        lv_obj_set_style_text_color(name_label, lv_color_hex(THEME_TEXT_DIM), 0);
     }
 }
 

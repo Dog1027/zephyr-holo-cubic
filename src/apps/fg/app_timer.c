@@ -5,7 +5,7 @@
 #include "nav.h"
 #include <math.h>
 
-#define TIMER_ACCENT_COLOR  0xf25f5c
+#define TIMER_ACCENT_COLOR  THEME_RED
 #define TIMER_ARC_SIZE      196
 #define TIMER_FACE_DOWN_DEG 150.0f  // |roll| 超過這個角度表示螢幕朝下
 #define TIMER_BLINK_MS      250
@@ -78,12 +78,12 @@ static void styles_init(void)
     lv_style_set_radius(&style_chip, 8);
     lv_style_set_bg_color(&style_chip, lv_color_hex(TIMER_ACCENT_COLOR));
     lv_style_set_bg_opa(&style_chip, LV_OPA_TRANSP);
-    lv_style_set_text_color(&style_chip, lv_color_hex(UI_DIM_COLOR));
+    lv_style_set_text_color(&style_chip, lv_color_hex(THEME_TEXT_DIM));
     lv_style_set_text_font(&style_chip, &lv_font_montserrat_14);
 
     lv_style_init(&style_chip_focused);
     lv_style_set_bg_opa(&style_chip_focused, LV_OPA_COVER);
-    lv_style_set_text_color(&style_chip_focused, lv_color_hex(UI_BG_COLOR));
+    lv_style_set_text_color(&style_chip_focused, lv_color_hex(THEME_BG));
 }
 
 static uint32_t remaining(void)
@@ -214,13 +214,13 @@ static void app_timer_init(void *scr)
     lv_obj_remove_style(self->arc, NULL, LV_PART_KNOB);
     lv_obj_set_clickable(self->arc, false);
     lv_obj_set_style_arc_width(self->arc, 8, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(self->arc, lv_color_hex(0x1c2333), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(self->arc, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_arc_width(self->arc, 8, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(self->arc, lv_color_hex(TIMER_ACCENT_COLOR), LV_PART_INDICATOR);
 
     self->time_label = lv_label_create(scr);
     lv_obj_set_style_text_font(self->time_label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(self->time_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(self->time_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
 
     self->state_label = lv_label_create(scr);
@@ -228,7 +228,7 @@ static void app_timer_init(void *scr)
     lv_label_set_long_mode(self->state_label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(self->state_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(self->state_label, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(self->state_label, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_align(self->state_label, LV_ALIGN_CENTER, 0, 34);
 
     self->tap_area = ui_tap_area(scr, tap_cb, NULL);

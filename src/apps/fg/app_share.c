@@ -30,7 +30,7 @@
  */
 
 #define SHARE_PORT          80
-#define SHARE_ACCENT_COLOR  0x43c59e
+#define SHARE_ACCENT_COLOR  THEME_GREEN
 #define SHARE_PATH_MAX      96
 #define SHARE_LINE_MAX      160     // 更長的 header 只看開頭，用不到的部分就丟掉
 #define SHARE_CHUNK         1024
@@ -969,7 +969,7 @@ static void app_share_init(void *scr)
         pin_new();
     }
 
-    self->url_label = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
+    self->url_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_align(self->url_label, LV_ALIGN_CENTER, 0, -62);
 
     self->pin_label = ui_label(scr, &lv_font_montserrat_48, SHARE_ACCENT_COLOR);
@@ -977,10 +977,10 @@ static void app_share_init(void *scr)
     lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, -22);
     pin_show();
 
-    self->status_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->status_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 18);
 
-    self->file_label = ui_label(scr, &lv_font_montserrat_14, 0xffffff);
+    self->file_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT);
     lv_obj_set_width(self->file_label, 200);
     lv_label_set_long_mode(self->file_label, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(self->file_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -989,10 +989,10 @@ static void app_share_init(void *scr)
     self->bar = lv_bar_create(scr);
     lv_obj_set_size(self->bar, 180, 8);
     lv_obj_align(self->bar, LV_ALIGN_CENTER, 0, 62);
-    lv_obj_set_style_bg_color(self->bar, lv_color_hex(0x1c2333), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(self->bar, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(SHARE_ACCENT_COLOR), LV_PART_INDICATOR);
 
-    self->total_label = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    self->total_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
     lv_obj_align(self->total_label, LV_ALIGN_BOTTOM_MID, 0, -14);
 
     ui_status(SHARE_HINT);

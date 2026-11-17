@@ -23,17 +23,17 @@ static void styles_init(void)
     lv_style_set_pad_hor(&style_item, 10);
     lv_style_set_pad_column(&style_item, 8);
     lv_style_set_bg_opa(&style_item, LV_OPA_TRANSP);
-    lv_style_set_text_color(&style_item, lv_color_white());
+    lv_style_set_text_color(&style_item, lv_color_hex(THEME_TEXT));
     lv_style_set_text_font(&style_item, &lv_font_montserrat_14);
 
     lv_style_init(&style_item_focused);
     lv_style_set_bg_opa(&style_item_focused, LV_OPA_COVER);
-    lv_style_set_text_color(&style_item_focused, lv_color_hex(UI_BG_COLOR));
+    lv_style_set_text_color(&style_item_focused, lv_color_hex(THEME_BG));
 }
 
 void ui_screen_init(lv_obj_t *scr)
 {
-    lv_obj_set_style_bg_color(scr, lv_color_hex(UI_BG_COLOR), 0);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BG), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_set_scrollable(scr, false);
 }
@@ -68,7 +68,7 @@ lv_obj_t *ui_title(lv_obj_t *scr, const char *text)
     lv_obj_set_width(title, 220);
     lv_label_set_long_mode(title, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
     return title;
@@ -145,7 +145,7 @@ lv_obj_t *ui_list_message(lv_obj_t *list, const char *text)
 {
     lv_obj_t *label = lv_label_create(list);
     lv_label_set_text(label, text);
-    lv_obj_set_style_text_color(label, lv_color_hex(UI_DIM_COLOR), 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_set_style_pad_top(label, 40, 0);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
