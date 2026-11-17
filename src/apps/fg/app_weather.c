@@ -29,6 +29,9 @@ typedef struct {
     lv_obj_t *desc;
     lv_obj_t *detail;
     lv_obj_t *status;
+    // 還沒有資料時的等待畫面：轉圈、status 和下面一行小字
+    lv_obj_t *spinner;
+    lv_obj_t *hint;
     day_view_t days[WEATHER_DAYS];
     weather_t data;
     uint32_t shown_generation;
@@ -163,19 +166,28 @@ static void show_status(bool have, weather_state_t state)
                                   (int)minutes);
         }
         lv_label_set_text(self->status, "");
+        lv_label_set_text(self->hint, "");
+        lv_obj_set_hidden(self->spinner, true);
         return;
     }
 
     lv_label_set_text(self->area, "Weather");
     switch (state) {
     case WEATHER_OFFLINE:
-        lv_label_set_text(self->status, "Waiting for Wi-Fi");
+        lv_obj_set_hidden(self->spinner, true);
+        lv_label_set_text(self->status, LV_SYMBOL_WIFI "  Waiting for Wi-Fi");
+        lv_label_set_text(self->hint, "The weather loads once it is online");
         break;
     case WEATHER_FAILED:
-        lv_label_set_text_fmt(self->status, "Update failed (%d)\nretrying in a minute", weather_error());
+        lv_obj_set_hidden(self->spinner, true);
+        lv_label_set_text_fmt(self->status, LV_SYMBOL_WARNING "  Update failed (%d)", weather_error());
+        lv_label_set_text(self->hint, "Retrying in a minute\nOK or tap to retry now");
         break;
     default:
-        lv_label_set_text(self->status, "Loading...");
+        // 抓一次大約 9 秒
+        lv_obj_set_hidden(self->spinner, false);
+        lv_label_set_text(self->status, "Getting the weather");
+        lv_label_set_text(self->hint, "This takes about 10 seconds");
         break;
     }
 }
@@ -223,9 +235,22 @@ static void app_weather_init(void *scr)
         lv_obj_align(d->temp, LV_ALIGN_TOP_MID, x, 220);
     }
 
-    self->status = ui_label(scr, &lv_font_montserrat_18, UI_DIM_COLOR);
+    self->spinner = lv_spinner_create(scr);
+    lv_obj_set_size(self->spinner, 72, 72);
+    lv_obj_align(self->spinner, LV_ALIGN_CENTER, 0, -34);
+    lv_obj_set_style_arc_width(self->spinner, 6, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(self->spinner, lv_color_hex(0x1c2333), LV_PART_MAIN);
+    lv_obj_set_style_arc_width(self->spinner, 6, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(self->spinner, lv_color_hex(WEATHER_ACCENT_COLOR), LV_PART_INDICATOR);
+    lv_obj_set_hidden(self->spinner, true);
+
+    self->status = ui_label(scr, &lv_font_montserrat_18, 0xffffff);
     lv_obj_set_style_text_align(self->status, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(self->status);
+    lv_obj_align(self->status, LV_ALIGN_CENTER, 0, 34);
+
+    self->hint = ui_label(scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    lv_obj_set_style_text_align(self->hint, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(self->hint, LV_ALIGN_CENTER, 0, 68);
 
     nav_set_handler(nav_cb);
 }
