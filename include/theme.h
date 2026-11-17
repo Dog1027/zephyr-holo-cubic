@@ -17,8 +17,8 @@
 
 // ---- Text
 #define THEME_TEXT              0xffffff    // values and anything important
-#define THEME_TEXT_SECONDARY    0xaab4c8    // explanations that must stay readable
-#define THEME_TEXT_DIM          0x5a6478    // titles, units, inactive items: decoration only
+#define THEME_TEXT_SECONDARY    0xe4f1f4    // explanations that must stay readable
+#define THEME_TEXT_DIM          0xbfdfe6    // titles, units, inactive items: decoration only
 
 // ---- Accents: one per app (its highlight, bar or arc), handed out in this order by the Menu
 #define THEME_BLUE              0x4f8ef7
