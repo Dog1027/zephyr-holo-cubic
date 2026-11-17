@@ -6,9 +6,7 @@
 
 /*
  * Wall clock from an NTP server. Syncs once Wi-Fi has an IP address, then every 6 hours.
- * SD card config (sdconf.h):
- *   tz=+8              UTC offset, also "-5" or "+5:30" (default +8)
- *   ntp_server=...     default pool.ntp.org
+ * Settings (conf.h): tz, ntp_server
  */
 
 // "Sun" ... "Sat" (tm_wday) and "Jan" ... "Dec" (tm_mon)
@@ -24,8 +22,11 @@ int64_t net_time_unix(void);
 // The same in milliseconds, for things that move within a second
 int64_t net_time_unix_ms(void);
 
-// Read tz from the config again (it is otherwise read at boot and at every sync)
+// Read the tz setting again after it changed (it is otherwise read at boot)
 void net_time_load_tz(void);
+
+// Is this a UTC offset the tz setting accepts: "+8", "-5", "+5:30"
+bool net_time_tz_valid(const char *text);
 
 // Sync now in the background, e.g. after changing ntp_server
 void net_time_sync(void);

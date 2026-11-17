@@ -4,13 +4,7 @@
 #include <stdint.h>
 
 /*
- * Wi-Fi station. The SSID and PSK are kept in the flash settings (prefs.h), so it connects
- * without an SD card. The SD card config (sdconf.h) is a way to put them there: when it has
- *   wifi_ssid=MyNetwork
- *   wifi_psk=password      (leave it out for an open network)
- * they replace the saved ones the next time it connects and the two lines are then removed
- * from the file (an import: the settings live in one place and the password does not stay on
- * the card). Without these lines, the file or the card, the saved ones are used as they are.
+ * Wi-Fi station. The SSID and PSK are the settings wifi_ssid / wifi_psk (conf.h).
  * It connects at boot and retries every 10 s after the link drops.
  * Shell: wlan set / status / forget / connect / disconnect / scan
  */
@@ -39,7 +33,7 @@ typedef struct {
     uint8_t security;               // enum wifi_security_type
 } wlan_ap_t;
 
-// (Re)connect: import the SSID / PSK from the SD card config if it has them, then use the saved ones. Runs in the background, the result is logged
+// (Re)connect with the saved SSID / PSK. Runs in the background, the result is logged
 int wlan_connect(void);
 
 // Drop the link, no reconnect until wlan_connect()

@@ -74,13 +74,20 @@ config INPUT_PITCH_INVERT
       Flip the sign of pitch for everything that reads it (Level bubble, back gesture
       is not affected since it uses both directions).
 
+config CONF_INIT_PRIORITY
+    int "Settings Import Initialization Priority"
+    default 93
+    range 0 99
+    help
+      Queues the import of /config.txt (conf.h). Must come after FILE_INIT_PRIORITY (the SD
+      card) and before WLAN_INIT_PRIORITY, so the import runs before the first connect.
+
 config WLAN_INIT_PRIORITY
     int "Wi-Fi Initialization Priority"
     default 95
     range 0 99
     help
-      Must come after FILE_INIT_PRIORITY: the SSID and PSK in the SD card config, if any,
-      replace the saved ones before connecting.
+      Must come after CONF_INIT_PRIORITY: settings in /config.txt are imported before connecting.
 
 config NET_JOB_STACK_SIZE
     int "Network Work Queue Stack Size"

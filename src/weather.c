@@ -9,14 +9,13 @@
 #include <string.h>
 #include "net_job.h"
 #include "net_time.h"
-#include "sdconf.h"
+#include "conf.h"
 #include "weather.h"
 #include "wlan.h"
 
 LOG_MODULE_REGISTER(weather, CONFIG_CUBE_LOG_LEVEL);
 
 #define HOST            "wttr.in"
-#define KEY_LOCATION    "weather_location"
 #define FETCH_TIMEOUT_MS 30000
 #define RETRY_MS        60000   // 失敗之後 weather_request() 等這麼久才再試
 // 中午的天氣代表那一天
@@ -361,7 +360,7 @@ static int fetch(void)
     int fd;
     int ret;
 
-    if (sdconf_get(KEY_LOCATION, location, sizeof(location)) <= 0) {
+    if (conf_get(CONF_WEATHER_LOCATION, location, sizeof(location)) <= 0) {
         location[0] = '\0';     // wttr.in 用來源 IP 判斷地點
     }
     url_encode(path, sizeof(path), location);

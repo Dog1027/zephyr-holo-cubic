@@ -6,6 +6,8 @@
 #include "net_server.h"
 #include "nav.h"
 #include "prefs.h"
+#include "conf.h"
+#include "sdconf.h"
 #include <zephyr/fs/fs.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/random/random.h>
@@ -443,6 +445,10 @@ static void upload_finish(void)
     ui_status("Saved");
     self->ui_dirty = true;
     respond_text(201, "Created", "saved\n");
+    // 設定檔傳上來就匯入（在背景做，Wi-Fi 設定有變會重新連線，所以先把回應排好）
+    if (strcasecmp(self->path, &SDCONF_PATH[sizeof(FILE_ROOT)]) == 0) {
+        conf_import();
+    }
 }
 
 static const char *content_type(const char *path)

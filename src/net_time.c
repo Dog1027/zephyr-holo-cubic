@@ -11,12 +11,10 @@
 #include <string.h>
 #include "net_job.h"
 #include "net_time.h"
-#include "sdconf.h"
+#include "conf.h"
 
 LOG_MODULE_REGISTER(net_time, CONFIG_CUBE_LOG_LEVEL);
 
-#define KEY_TZ          "tz"
-#define KEY_SERVER      "ntp_server"
 #define DEFAULT_TZ_S    (8 * 3600)
 #define DEFAULT_SERVER  "pool.ntp.org"
 #define SNTP_TIMEOUT_MS 3000
@@ -64,11 +62,18 @@ void net_time_load_tz(void)
     char buf[8];
     int32_t offset = DEFAULT_TZ_S;
 
-    if (sdconf_get(KEY_TZ, buf, sizeof(buf)) > 0 && !parse_tz(buf, &offset)) {
-        LOG_WRN("Bad %s=%s in %s, using +8", KEY_TZ, buf, SDCONF_PATH);
+    // 存進去之前檢查過格式了，這裡解不出來就用預設值
+    if (conf_get(CONF_TZ, buf, sizeof(buf)) > 0 && !parse_tz(buf, &offset)) {
         offset = DEFAULT_TZ_S;
     }
     tz_offset_s = offset;
+}
+
+bool net_time_tz_valid(const char *text)
+{
+    int32_t offset;
+
+    return parse_tz(text, &offset);
 }
 
 int64_t net_time_unix_ms(void)
@@ -104,10 +109,9 @@ static void sync_work_fn(struct k_work *work)
     char server[64];
     struct sntp_time sntp;
 
-    if (sdconf_get(KEY_SERVER, server, sizeof(server)) <= 0) {
+    if (conf_get(CONF_NTP_SERVER, server, sizeof(server)) <= 0) {
         strcpy(server, DEFAULT_SERVER);
     }
-    net_time_load_tz();
 
     int ret = sntp_simple(server, SNTP_TIMEOUT_MS, &sntp);
     if (ret < 0) {
@@ -156,7 +160,6 @@ static int net_time_init(void)
     return 0;
 }
 
-// 要在 SD 卡掛載之後才讀得到 tz
 SYS_INIT(net_time_init, APPLICATION, CONFIG_WLAN_INIT_PRIORITY);
 
 /* ---------- shell ---------- */
@@ -187,7 +190,7 @@ static int _ntp_sync(const struct shell *shell, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_ntp,
     SHELL_CMD_ARG(status, NULL, "Local time and time zone", _ntp_status, 1, 0),
-    SHELL_CMD_ARG(sync, NULL, "Sync now (reads tz / ntp_server from the config)", _ntp_sync, 1, 0),
+    SHELL_CMD_ARG(sync, NULL, "Sync now", _ntp_sync, 1, 0),
     SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(ntp, &sub_ntp, "Network time", NULL);

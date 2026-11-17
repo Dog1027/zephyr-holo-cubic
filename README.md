@@ -10,8 +10,8 @@
 
 | App | 說明 | 需要的 SD 卡內容 |
 |---|---|---|
-| Clock | 時鐘，網路對時；OK 或敲一下切換 12 / 24 小時制（重開機後保留） | `/config.txt`（Wi-Fi，時區） |
-| Weather | 目前天氣（wttr.in）和三天預報。打開時才抓（約 9 秒），30 分鐘內的資料直接顯示，開著時每 30 分鐘更新；OK 或敲一下馬上更新 | `/config.txt`（Wi-Fi，地點） |
+| Clock | 時鐘，網路對時；OK 或敲一下切換 12 / 24 小時制（重開機後保留） | 不需要（要先設定 Wi-Fi） |
+| Weather | 目前天氣（wttr.in）和三天預報。打開時才抓（約 9 秒），30 分鐘內的資料直接顯示，開著時每 30 分鐘更新；OK 或敲一下馬上更新 | 不需要（要先設定 Wi-Fi） |
 | Files | 瀏覽 SD 卡，資料夾排在前面 | |
 | Anim | 播放 JPEG 序列動畫，循環播放 | `/anim/<名稱>/000.jpg …` |
 | Photos | 相簿，可自動輪播 | `/photo/*.jpg` |
@@ -20,9 +20,9 @@
 | Light | 用 RGB LED 當氣氛燈，顏色重開機後保留 | |
 | Timer | 計時器，翻面朝下會暫停，離開 app 也會繼續計時 | |
 | SysInfo | 運行時間、heap、SD 卡容量、各 thread 的 stack 用量 | |
-| Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | `/config.txt`（Wi-Fi） |
-| Share | 網頁版的檔案管理：開著時用瀏覽器或 curl 瀏覽、上傳、下載、刪除 SD 卡上的檔案，要輸入螢幕上的 PIN（見下面） | `/config.txt`（Wi-Fi） |
-| Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上（`just cast`，見下面） | `/config.txt`（Wi-Fi） |
+| Network | 最近一分鐘的訊號強度曲線、SSID、IP、gateway、MAC；選 Scan 按 OK 掃描附近的網路 | 不需要（要先設定 Wi-Fi） |
+| Share | 網頁版的檔案管理：開著時用瀏覽器或 curl 瀏覽、上傳、下載、刪除 SD 卡上的檔案，要輸入螢幕上的 PIN（見下面） | 不需要（要先設定 Wi-Fi） |
+| Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上（`just cast`，見下面） | 不需要（要先設定 Wi-Fi） |
 | Test | 空的 app，給測試新功能用 | |
 
 ## 硬體
@@ -102,10 +102,11 @@ ntp sync              立刻重新對時
 weather               目前天氣和三天預報
 weather update        立刻更新
 
-config list           顯示 /config.txt（密碼會遮住）
+config list           顯示所有設定（密碼會遮住）
 config get KEY        讀一個值
 config set KEY VALUE  設定一個值（值有空白要加引號）
-config unset KEY      刪掉一個 key
+config unset KEY      回到預設值
+config import         現在就匯入 SD 卡上的 /config.txt（開機時也會做）
 ```
 
 `ui remote` 進入遙控模式後，按鍵會直接控制裝置：
@@ -145,7 +146,7 @@ just gif2jpg cat.gif out/cat 120x120
     001.jpg
     delay.txt           每格毫秒數（選用，預設 100）
 /lots.txt               抽籤清單，一行一項（字型只支援英數字）
-/config.txt             設定檔（Wi-Fi、時區），格式見下面
+/config.txt             要匯入的設定（Wi-Fi、時區…），匯入後內容會被刪掉，見下面
 ```
 
 ### 用 Wi-Fi 管理檔案（Share app）
@@ -164,7 +165,7 @@ curl -b pin=1234 -X PUT http://192.168.1.20/anim/cat/        # 建立資料夾
 curl -b pin=1234 -X DELETE http://192.168.1.20/photo/cat.jpg # 刪除檔案或空的資料夾
 ```
 
-上傳時資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字、空白和 `._-+()`，其他名稱的檔案會列出來但不能操作。上傳大約 85 KB/s、下載大約 65 KB/s，適合照片和設定檔。傳到一半斷線，沒傳完的上傳檔案會被刪掉。一次只服務一個連線。`/config.txt`（裡面有 Wi-Fi 密碼）有 PIN 就能讀寫，所以只在信任的網路上打開這個 app。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
+上傳時資料夾不存在會自動建立，同名檔案會被覆蓋。檔名只能用英數字、空白和 `._-+()`，其他名稱的檔案會列出來但不能操作。上傳大約 85 KB/s、下載大約 65 KB/s，適合照片和設定檔。傳到一半斷線，沒傳完的上傳檔案會被刪掉。一次只服務一個連線。有 PIN 的人可以上傳 `/config.txt` 來改設定（包括換 Wi-Fi），所以只在信任的網路上打開這個 app；Wi-Fi 密碼存在 flash 裡，從網頁讀不到。Photos 和 Anim 是打開時讀資料夾，上傳後重新打開才看得到。
 
 `just test-share` 會在實機上把這些功能和 PIN 規則測一遍（最後會按 OK，所以測完 PIN 會換一組）。
 
@@ -183,29 +184,35 @@ just cast 192.168.1.20 --screen --region 0,0,800,800   # 螢幕的一部分（X1
 
 動畫的編號不能有缺號，播放時讀不到下一格就會回到第一格。尺寸越小播放越順，120x120 的解碼量只有 240x240 的四分之一。
 
-### 設定檔 /config.txt
+### 設定
 
-開機時從 SD 卡的 `/config.txt` 讀取設定，可以在電腦上直接編輯，也可以在 shell 用 `wlan set` 或 `config set`：
+設定存在 flash 裡，不插 SD 卡也有效，重新燒錄也不會消失：
 
-```
-# HoloCubic 設定
-wifi_ssid=MyNetwork
-wifi_psk=password
-tz=+8
-```
-
-| Key | 說明 | 預設 |
+| Key | 說明 | 沒設定時 |
 |---|---|---|
-| `wifi_ssid` | Wi-Fi 名稱；匯入到 flash 之後這行和 `wifi_psk` 會從檔案刪掉（見下面） | |
-| `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元（WPA2-PSK）；開放網路不要寫 | |
-| `tz` | 時區（UTC 偏移），例如 `+8`、`-5`、`+5:30`；打開 Clock 時重新讀取 | `+8` |
+| `wifi_ssid` | Wi-Fi 名稱 | 不連網路 |
+| `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元（WPA2-PSK） | 當成開放網路 |
+| `tz` | 時區（UTC 偏移），例如 `+8`、`-5`、`+5:30` | `+8` |
 | `ntp_server` | 對時用的 NTP server | `pool.ntp.org` |
 | `weather_location` | 天氣的地點：城市名（`Taipei`、`New York`）或 `緯度,經度`；下次更新時生效 | 依 IP 判斷 |
 
-**Wi-Fi 設定存在 flash，不插 SD 卡也能連線。** `/config.txt` 是用來匯入的：每次連線前，檔案裡有 `wifi_ssid` 就用它和 `wifi_psk` 蓋掉存著的設定，存好之後把這兩行從檔案刪掉（其他內容和註解不動），然後用存著的設定連線；沒有這一行、沒有這個檔或沒插卡，就直接用存著的。所以第一次設定或換網路時，在電腦上把這兩行寫進 `/config.txt`（或用 `wlan set`）即可，密碼不會留在卡上。要讓方塊忘記網路用 `wlan forget`；把方塊交給別人前記得做，重新燒錄不會清掉它。
+兩種改法：
+
+- **shell**：`config list` 看全部，`config set tz +9`、`config unset tz`；Wi-Fi 用 `wlan set <SSID> [密碼]` 一次設兩個。改了馬上生效（Wi-Fi 會重新連線）。
+- **SD 卡上的 `/config.txt`**，可以在電腦上編輯或用 Share 上傳：
+
+  ```
+  wifi_ssid=MyNetwork
+  wifi_psk=password
+  tz=+8
+  ```
+
+  這個檔是用來**匯入**的，不是另一份設定：開機時（SD 卡掛載之後、Wi-Fi 連線之前）和 Share 存好這個檔的時候，裡面認得的 key 會檢查格式、存進 flash，然後**從檔案刪掉**。所以設定只存在一個地方，卡上的舊值不會把後來改的蓋回去，密碼也不留在卡上。格式不對的行（例如 `tz=abc`、不到 8 個字元的密碼）不匯入、留在檔案裡，log 會有一行 warning；註解和不認得的 key 不動。只寫 `wifi_ssid` 沒有 `wifi_psk` 表示開放網路，會清掉存著的密碼。`key=`（空的值）等於 `config unset`。
+
+要讓方塊忘記網路用 `wlan forget`；把方塊交給別人前記得做。新增一個設定：在 `src/conf.c` 的表加一行、`include/conf.h` 加名稱，用到的地方 `conf_get()`。
 
 - 一行一個 `key=value`，key 和值前後的空白會被忽略；`#` 開頭的行是註解。
-- 用指令修改時會保留其他行和註解，檔案上限 1 KB。
+- 檔案上限 1 KB。
 - Wi-Fi 斷線或連不上時每 10 秒重試一次，只在第一次失敗時記 log。只支援 2.4 GHz。
 - 連上網路後自動對時，之後每 6 小時再對一次；失敗時 15 秒後重試。
 
@@ -292,7 +299,8 @@ src/
   led.c                 RGB LED 與基礎顏色
   prefs.c               斷電保存的設定（settings / NVS）
   file.c                SD 卡掛載
-  sdconf.c              SD 卡上的設定檔 /config.txt（key=value）
+  conf.c                設定（存在 flash）、從 /config.txt 匯入、config 指令
+  sdconf.c              讀寫 SD 卡上的 /config.txt（key=value），只有 conf.c 在用
   wlan.c                Wi-Fi 連線、掃描與 wlan 指令
   net_job.c             網路工作共用的背景 work queue
   net_time.c            SNTP 對時、時區與 ntp 指令

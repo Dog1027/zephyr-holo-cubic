@@ -75,8 +75,6 @@ static void app_clock_init(void *scr)
     if (prefs_load("clock/24h", &saved, sizeof(saved)) == sizeof(saved)) {
         self->hour24 = saved != 0;
     }
-    // tz 可能在電腦上改過，每次打開都重讀
-    net_time_load_tz();
 
     // 秒數圓環：一分鐘走一圈，單位是 CLOCK_ARC_STEP_MS
     self->arc = lv_arc_create(scr);

@@ -25,6 +25,7 @@ target_sources(app PRIVATE
   src/nav.c
   src/i2c_pullup.c
   src/sdconf.c
+  src/conf.c
   src/net_job.c
   src/wlan.c
   src/net_time.c

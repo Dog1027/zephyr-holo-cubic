@@ -1,16 +1,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/fs/fs.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/shell/shell.h>
 #include <ctype.h>
 #include <string.h>
-#include <strings.h>
 #include "file.h"
 #include "sdconf.h"
 
 LOG_MODULE_REGISTER(sdconf, CONFIG_CUBE_LOG_LEVEL);
 
-// shell 和 Wi-Fi 的 work queue 都會讀寫，兩塊 buffer 共用一把鎖
+// 兩塊 buffer 共用一把鎖
 static K_MUTEX_DEFINE(sdconf_mutex);
 // __noinit 放在 DRAM region 1，region 0 已經被 Wi-Fi 用滿；每次都會先讀檔再用
 static char file_buf[SDCONF_MAX_SIZE + 1] __noinit;
@@ -198,89 +196,3 @@ int sdconf_set(const char *key, const char *value)
     }
     return ret;
 }
-
-/* ---------- shell ---------- */
-
-// 值裡有密碼的 key 不印出來
-static bool is_secret(const char *key, size_t len)
-{
-    for (size_t i = 0; i + 3 <= len; i++) {
-        if (strncasecmp(key + i, "psk", 3) == 0 || strncasecmp(key + i, "pas", 3) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static int _config_list(const struct shell *shell, size_t argc, char **argv)
-{
-    k_mutex_lock(&sdconf_mutex, K_FOREVER);
-    int ret = load_file();
-    if (ret == 0) {
-        shell_print(shell, "%s is empty or missing", SDCONF_PATH);
-    }
-    for (const char *line = file_buf, *next; ret > 0 && *line != '\0'; line = next) {
-        size_t line_len = line_end(line, &next);
-        const char *eq = memchr(line, '=', line_len);
-        if (eq != NULL && line[0] != '#' && is_secret(line, eq - line)) {
-            shell_print(shell, "%.*s= ********", (int)(eq - line), line);
-        }
-        else {
-            shell_print(shell, "%.*s", (int)line_len, line);
-        }
-    }
-    k_mutex_unlock(&sdconf_mutex);
-    if (ret < 0) {
-        shell_error(shell, "Failed to read %s (%d)", SDCONF_PATH, ret);
-    }
-    return ret < 0 ? ret : 0;
-}
-
-static int _config_get(const struct shell *shell, size_t argc, char **argv)
-{
-    char value[128];
-    int ret = sdconf_get(argv[1], value, sizeof(value));
-
-    if (ret == -ENOENT) {
-        shell_print(shell, "%s is not set", argv[1]);
-        return 0;
-    }
-    if (ret < 0) {
-        shell_error(shell, "Failed to read %s (%d)", argv[1], ret);
-        return ret;
-    }
-    shell_print(shell, "%s=%s", argv[1], is_secret(argv[1], strlen(argv[1])) ? "********" : value);
-    return 0;
-}
-
-static int _config_set(const struct shell *shell, size_t argc, char **argv)
-{
-    int ret = sdconf_set(argv[1], argv[2]);
-    if (ret < 0) {
-        shell_error(shell, "Failed to write %s (%d)", SDCONF_PATH, ret);
-        return ret;
-    }
-    shell_print(shell, "%s=%s", argv[1], is_secret(argv[1], strlen(argv[1])) ? "********" : argv[2]);
-    return 0;
-}
-
-static int _config_unset(const struct shell *shell, size_t argc, char **argv)
-{
-    int ret = sdconf_set(argv[1], NULL);
-    if (ret < 0) {
-        shell_error(shell, "Failed to write %s (%d)", SDCONF_PATH, ret);
-        return ret;
-    }
-    shell_print(shell, "Removed %s", argv[1]);
-    return 0;
-}
-
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_config,
-    SHELL_CMD_ARG(list, NULL, "Show " SDCONF_PATH " (passwords hidden)", _config_list, 1, 0),
-    SHELL_CMD_ARG(get, NULL, "Show one value: config get <key>", _config_get, 2, 0),
-    SHELL_CMD_ARG(set, NULL, "Set a value: config set <key> <value> (quote values with spaces)",
-                  _config_set, 3, 0),
-    SHELL_CMD_ARG(unset, NULL, "Remove a key: config unset <key>", _config_unset, 2, 0),
-    SHELL_SUBCMD_SET_END);
-
-SHELL_CMD_REGISTER(config, &sub_config, "SD card config (" SDCONF_PATH ")", NULL);

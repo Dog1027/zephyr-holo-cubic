@@ -4,9 +4,10 @@
 #include "file.h"
 
 /*
- * Settings the user can also edit on a PC: /config.txt on the SD card, one "key=value" per line.
- * Spaces around the key and the value are ignored. Blank lines, '#' comments and keys this
- * firmware does not know are kept as they are when a value is changed.
+ * /config.txt on the SD card, one "key=value" per line: the file conf.c imports settings from.
+ * Only conf.c uses this, everything else reads its settings with conf_get() (conf.h).
+ * Spaces around the key and the value are ignored. Blank lines, '#' comments and other keys
+ * are kept as they are when a key is changed or removed.
  */
 #define SDCONF_PATH FILE_ROOT "/config.txt"
 

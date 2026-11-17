@@ -7,8 +7,7 @@
  * Current weather and a 3 day forecast from wttr.in (plain HTTP, metric units).
  * Fetched only on request (the Weather app while it is open, or "weather update"), on the
  * net_job queue. A fetch takes about 9 s.
- * SD card config (sdconf.h):
- *   weather_location=Taipei     city, "lat,lon" or anything wttr.in accepts (default: by IP)
+ * Setting (conf.h): weather_location, a city, "lat,lon" or anything wttr.in accepts
  * Shell: weather / weather update
  */
 
