@@ -28,6 +28,7 @@ typedef struct {
     int64_t next_slide_ms;
     char *names;
     size_t *name_offsets;
+    jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
 APP_FG_REGISTER(Photos, LV_SYMBOL_IMAGE, app_photos_init, app_photos_run, app_photos_exit, 8, self_t);
@@ -189,7 +190,7 @@ static void app_photos_run(void *scr)
             self->pending_step = 0;
             return;
         }
-        jpeg_begin();
+        jpeg_begin(&self->jpeg);
         self->started = true;
         photo_show(0, 1);
         self->next_slide_ms = k_uptime_get() + PHOTO_SLIDE_MS;
@@ -221,6 +222,7 @@ static void app_photos_run(void *scr)
 
 static void app_photos_exit(void *scr)
 {
+    jpeg_end();
     led_restore();
     photos_free();
 }

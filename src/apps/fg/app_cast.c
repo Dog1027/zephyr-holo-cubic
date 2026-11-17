@@ -32,6 +32,7 @@ typedef struct {
     int64_t conn_ms;
     uint32_t frames;
     uint32_t bad_frames;
+    jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
 APP_FG_REGISTER(Cast, LV_SYMBOL_VIDEO, app_cast_init, app_cast_run, app_cast_exit, 16, self_t);
@@ -119,7 +120,7 @@ static void frame_receive(void)
     }
 
     if (!self->drawing) {
-        jpeg_begin();
+        jpeg_begin(&self->jpeg);
         self->drawing = true;
     }
     int ret = jpeg_show_stream(frame_read, NULL);
@@ -219,6 +220,7 @@ static void app_cast_run(void *scr)
 
 static void app_cast_exit(void *scr)
 {
+    jpeg_end();
     if (self->fd >= 0) {
         zsock_close(self->fd);
     }

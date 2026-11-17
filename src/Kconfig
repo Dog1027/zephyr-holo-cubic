@@ -30,10 +30,11 @@ config APP_THREAD_STACK_SIZE
 
 config APP_STATE_SIZE
     int "Foreground app state size"
-    default 1536
+    default 28160
     help
       Memory shared by the foreground apps for their state (one app is open at a time).
-      Every app checks at build time that its state struct fits.
+      Every app checks at build time that its state struct fits. The largest are the apps
+      that show JPEGs: the decoder's working memory (jpeg_mem_t, 27 KB) is part of their state.
 
 config APP_THREAD_SHOW_FPS
     bool "Show FPS"

@@ -26,6 +26,7 @@ typedef struct {
     int frame;
     uint32_t delay_ms;
     int64_t next_frame_ms;
+    jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
 APP_FG_REGISTER(Anim, LV_SYMBOL_PLAY, app_anim_init, app_anim_run, app_anim_exit, 7, self_t);
@@ -119,7 +120,7 @@ static void play_start(void)
     lv_obj_set_hidden(self->player, false);
     ui_group_solo(self->player);
 
-    jpeg_begin();
+    jpeg_begin(&self->jpeg);
     self->playing = true;
 }
 
@@ -187,4 +188,5 @@ static void app_anim_run(void *scr)
 
 static void app_anim_exit(void *scr)
 {
+    jpeg_end();
 }

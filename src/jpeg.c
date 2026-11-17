@@ -10,10 +10,7 @@
 
 LOG_MODULE_REGISTER(jpeg, CONFIG_CUBE_LOG_LEVEL);
 
-#define JPEG_MAX_WIDTH    240
-#define JPEG_MCU_HEIGHT   16     // TJpgDec 一次輸出一列 MCU，4:2:0 時高 16
-#define JPEG_WORKBUF_SIZE 12288  // JD_FASTDECODE 2 的 huffman 查表要多約 6 KB
-#define JPEG_WRITER_STACK 2048
+#define JPEG_WRITER_STACK 1024  // 實測最多 464
 #define JPEG_WRITER_PRIO  6      // 比 app_thread 高，buffer 一交出去就開始傳
 
 typedef struct {
@@ -33,11 +30,8 @@ typedef struct {
 
 static const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 
-// __noinit：ESP32 的 .noinit 放在 DRAM region 1（ESP32_REGION_1_NOINIT），把 region 0 留給
-// Wi-Fi / 網路堆疊。兩個 buffer 每次用之前都會整塊寫過，不需要清成 0；region 1 一樣可以 DMA
-static uint8_t workbuf[JPEG_WORKBUF_SIZE] __noinit;
-// 兩個 buffer 輪流：解碼下一列的同時，writer thread 用 DMA 把上一列送到螢幕
-static uint16_t row_buf[2][JPEG_MAX_WIDTH * JPEG_MCU_HEIGHT] __noinit;
+// 工作區由 app 提供（jpeg_begin），放在前景 app 共用的 state 裡；沒有 app 在顯示 JPEG 時是 NULL
+static jpeg_mem_t *mem;
 static K_SEM_DEFINE(buf0_free, 1, 1);
 static K_SEM_DEFINE(buf1_free, 1, 1);
 static struct k_sem *const buf_free[2] = {&buf0_free, &buf1_free};
@@ -76,7 +70,7 @@ static void writer_entry(void *arg1, void *arg2, void *arg3)
             .height = w.h,
             .pitch = w.w,
         };
-        display_write(display_dev, w.x, w.y, &desc, row_buf[w.buf]);
+        display_write(display_dev, w.x, w.y, &desc, mem->row_buf[w.buf]);
         k_sem_give(buf_free[w.buf]);
     }
 }
@@ -129,7 +123,7 @@ static int dec_output(JDEC *jd, void *bitmap, JRECT *rect)
     }
 
     for (uint16_t y = 0; y < h; y++) {
-        uint16_t *dst = &row_buf[cur_buf][y * jd->width + rect->left];
+        uint16_t *dst = &mem->row_buf[cur_buf][y * jd->width + rect->left];
         for (uint16_t x = 0; x < w; x++) {
             // ST7789V 吃 big-endian RGB565 (跟 LV_COLOR_16_SWAP 一樣)
             *dst++ = __builtin_bswap16(*src++);
@@ -158,16 +152,17 @@ static void screen_clear(uint16_t w, uint16_t h)
         .pitch = w,
     };
 
-    memset(row_buf[0], 0, sizeof(row_buf[0]));
+    memset(mem->row_buf[0], 0, sizeof(mem->row_buf[0]));
     for (uint16_t y = 0; y < h; y += JPEG_MCU_HEIGHT) {
         desc.height = MIN(JPEG_MCU_HEIGHT, h - y);
         desc.buf_size = w * desc.height * 2;
-        display_write(display_dev, 0, y, &desc, row_buf[0]);
+        display_write(display_dev, 0, y, &desc, mem->row_buf[0]);
     }
 }
 
-void jpeg_begin(void)
+void jpeg_begin(jpeg_mem_t *app_mem)
 {
+    mem = app_mem;
     // LVGL 畫完之後畫面是全黑的背景，可以當成「全螢幕大小的圖」
     lv_refr_now(NULL);
 #ifdef CONFIG_LV_Z_FLUSH_THREAD
@@ -175,6 +170,12 @@ void jpeg_begin(void)
 #endif
     last_w = 0;
     last_h = 0;
+}
+
+void jpeg_end(void)
+{
+    // jpeg_show() 回來之前就等 writer thread 送完了，這裡不會有人還在用
+    mem = NULL;
 }
 
 int jpeg_show_stream(jpeg_read_cb_t read, void *ctx)
@@ -186,7 +187,10 @@ int jpeg_show_stream(jpeg_read_cb_t read, void *ctx)
     dec.read = read;
     dec.ctx = ctx;
     display_get_capabilities(display_dev, &caps);
-    rc = jd_prepare(&jd, dec_input, workbuf, sizeof(workbuf), &dec);
+    if (mem == NULL) {
+        return -EINVAL;
+    }
+    rc = jd_prepare(&jd, dec_input, mem->workbuf, sizeof(mem->workbuf), &dec);
     if (rc != JDR_OK) {
         // 最常見的原因是 progressive JPEG，TJpgDec 只支援 baseline
         LOG_ERR("Failed to decode (%d)", rc);

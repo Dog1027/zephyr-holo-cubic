@@ -252,7 +252,8 @@ tz=+8
 - **註冊參數**：名稱、Menu 圖示（`LV_SYMBOL_*`）、三個 callback、priority、state 型別。priority 決定在 Menu 的順序，不能是 0（保留給 Menu），每個 app 用不同的值。
 - **狀態放在 `self_t`**：app 開著時要記住的東西（LVGL 物件、畫面狀態、小 buffer）都放進 `self_t`，用 `self->` 存取，不要寫成 `static` 變數。所有前景 app 共用同一塊記憶體（`CONFIG_APP_STATE_SIZE`，放在 DRAM region 1），框架在 `init` 之前把它清成 0，app 關閉後就交給下一個 app。沒有狀態的 app 用 `app_no_state_t`。
   - 0 以外的初始值要在 `init` 裡設定。
-  - `self_t` 放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。大 buffer（超過幾百 bytes、只在某個函式裡用）放 stack，不要放 `self_t`。
+  - `self_t` 放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`（目前 27.5 KB）。只在某個函式裡用的大 buffer 放 stack，不要放 `self_t`。
+  - **要顯示 JPEG 的 app**：在 `self_t` 裡放一個 `jpeg_mem_t jpeg;`（解碼的工作區，約 27 KB，不用初始化），`jpeg_begin(&self->jpeg)` 之後才能 `jpeg_show()`，`exit` 裡呼叫 `jpeg_end()`。JPEG 模組自己不佔記憶體，所以沒在顯示 JPEG 的 app 可以把這塊空間拿去用。
   - `exit` 之後不能再用 `self`：不能讓 timer、work 或其他 thread 拿著指向它的指標。
   - **要在 app 關閉後保留的東西才用 `static`**，並加註解說明原因。目前只有兩種：離開 app 還要繼續運作的狀態（Timer 的計時），以及只初始化一次的 `lv_style_t`（Dice、Light、Timer）。
 - **`init`**：每次開啟 app 都會呼叫，畫面已經清空，物件要在這裡重新建立。
@@ -314,7 +315,7 @@ tools/                  圖片與動畫轉檔、投影（cast.py）與序列埠�
 - **LED 偶爾寫入失敗**：ws2812_i2s 送完 START 才送 DRAIN，只有一顆 LED 時資料很短，中間被中斷就已經傳完，DRAIN 回 -EIO（Wi-Fi 忙時更常見）。`led.c` 會重送，並在 I2S 停在 ERROR 時 PREPARE；driver 的 log 關掉了（`CONFIG_LED_STRIP_LOG_LEVEL_OFF`）。
 - **編譯器 bug**：Zephyr SDK 1.0.1 的 Xtensa GCC 14.3 會把 TJpgDec 裡 `pc += ix & 1` 編錯（-O1、-O2 都會），解碼時讀到 NULL 當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
 - **只能用 HTTP**：TLS 需要的記憶體放不下，所以網路服務都用純 HTTP。回應太大時要邊收邊解析（例如 `weather.c` 的 40 KB JSON 只用 512 B 的 buffer）。
-- **DRAM 幾乎用滿**：開了 Wi-Fi 之後 DRAM region 0 只剩不到 1 KB。為了放得下，LVGL draw buffer 從畫面的 20% 降到 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 固定 48 KB，Wi-Fi 和網路的 buffer 數也調少了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到還有空間的 DRAM region 1（JPEG 的 buffer 就是這樣放的）。
+- **DRAM 很緊**：region 0 剩約 13 KB，region 1 剩約 5 KB（build 最後會印）。為了放得下，LVGL draw buffer 是畫面的 10%（`CONFIG_LV_Z_VDB_SIZE`），system heap 40 KB（實測峰值 32.9 KB，出現在 Wi-Fi 掃描時，shell 的 `kernel heap` 看得到），Wi-Fi 和網路的 buffer 數、幾個 stack 也照實測調小了（見 `prj.conf`）。大塊的 buffer 請加 `__noinit`，會放到 DRAM region 1；只有某個前景 app 開著才需要的就放進它的 `self_t`。
 - **不要在 `SYS_INIT` 裡繪圖**：開了 LVGL flush thread 後，它要等所有 `SYS_INIT` 結束才會啟動，在那之前繪圖會讓開機卡死。第一次繪圖在 `app_thread` 裡的 `gui_start()`。
 - **LVGL 記憶體**：Menu 會一直留在背景，加上前景 app 和切換動畫，32 KB 不夠，目前設為 64 KB。可以用 SysInfo 看實際用量。
 - **字型**：內建的 Montserrat 不含中文。
