@@ -8,13 +8,17 @@
 #include <zephyr/shell/shell.h>
 #include <string.h>
 #include "net_job.h"
+#include "prefs.h"
 #include "sdconf.h"
 #include "wlan.h"
 
 LOG_MODULE_REGISTER(wlan, CONFIG_CUBE_LOG_LEVEL);
 
-#define KEY_SSID "wifi_ssid"
-#define KEY_PSK  "wifi_psk"
+// SD 卡設定檔裡的 key，和存在 flash settings 裡的 key
+#define KEY_SSID  "wifi_ssid"
+#define KEY_PSK   "wifi_psk"
+#define PREF_SSID "wifi/ssid"
+#define PREF_PSK  "wifi/psk"
 
 #define WIFI_EVENTS (NET_EVENT_WIFI_CONNECT_RESULT | NET_EVENT_WIFI_DISCONNECT_RESULT | \
                      NET_EVENT_WIFI_SCAN_RESULT | NET_EVENT_WIFI_SCAN_DONE)
@@ -159,6 +163,58 @@ static void l4_event_handler(struct net_mgmt_event_callback *cb, uint64_t event,
     }
 }
 
+// 存在 settings 裡的字串（含結尾的 NUL），沒設定過或清掉了都是空字串。回傳長度
+static int cred_load(const char *key, char *buf, size_t len)
+{
+    int n = prefs_load(key, buf, len - 1);
+
+    buf[MAX(n, 0)] = '\0';
+    return strlen(buf);
+}
+
+static int cred_save(const char *key, const char *value)
+{
+    return prefs_save(key, value, strlen(value) + 1);
+}
+
+// SD 卡的設定檔裡有沒有 Wi-Fi 設定
+static bool sd_has_creds(void)
+{
+    char ssid[WIFI_SSID_MAX_LEN + 1];
+
+    return sdconf_get(KEY_SSID, ssid, sizeof(ssid)) > 0;
+}
+
+// 設定檔裡有 wifi_ssid 就用它（和 wifi_psk）蓋掉存著的；沒有這行、沒有檔案或沒插卡就不動。
+// 內容一樣就不寫，不會每次開機都寫 flash
+static void creds_from_sd(void)
+{
+    char ssid[WIFI_SSID_MAX_LEN + 1];
+    char psk[WIFI_PSK_MAX_LEN + 1];
+    char saved[WIFI_PSK_MAX_LEN + 1];
+    bool changed = false;
+
+    if (sdconf_get(KEY_SSID, ssid, sizeof(ssid)) <= 0) {
+        return;
+    }
+    if (sdconf_get(KEY_PSK, psk, sizeof(psk)) < 0) {
+        psk[0] = '\0';
+    }
+    cred_load(PREF_SSID, saved, sizeof(saved));
+    if (strcmp(saved, ssid) != 0) {
+        changed = cred_save(PREF_SSID, ssid) == 0;
+    }
+    cred_load(PREF_PSK, saved, sizeof(saved));
+    if (strcmp(saved, psk) != 0) {
+        changed = cred_save(PREF_PSK, psk) == 0;
+    }
+    if (changed) {
+        LOG_INF("Wi-Fi settings updated from %s", SDCONF_PATH);
+    }
+    memset(psk, 0, sizeof(psk));
+    memset(saved, 0, sizeof(saved));
+}
+
 // 已連上或正在連
 static bool link_busy(struct net_if *iface)
 {
@@ -195,17 +251,15 @@ static void connect_work_fn(struct k_work *work)
     if (!wanted || (!forced && link_busy(iface))) {
         return;
     }
-    int ssid_len = sdconf_get(KEY_SSID, ssid, sizeof(ssid));
-    if (ssid_len <= 0) {
-        LOG_INF("No %s in %s, Wi-Fi stays off (see: wlan set)", KEY_SSID, SDCONF_PATH);
+    creds_from_sd();
+    int ssid_len = cred_load(PREF_SSID, ssid, sizeof(ssid));
+    if (ssid_len == 0) {
+        LOG_INF("No Wi-Fi settings, Wi-Fi stays off (wlan set, or %s in %s)", KEY_SSID, SDCONF_PATH);
         return;
     }
-    int psk_len = sdconf_get(KEY_PSK, psk, sizeof(psk));
-    if (psk_len < 0) {
-        psk_len = 0;
-    }
+    int psk_len = cred_load(PREF_PSK, psk, sizeof(psk));
     if (psk_len > 0 && psk_len < WIFI_PSK_MIN_LEN) {
-        LOG_ERR("%s must be at least %d characters", KEY_PSK, WIFI_PSK_MIN_LEN);
+        LOG_ERR("The Wi-Fi password must be at least %d characters", WIFI_PSK_MIN_LEN);
         return;
     }
 
@@ -356,6 +410,10 @@ static int wlan_init(void)
                                  NET_EVENT_L4_CONNECTED | NET_EVENT_L4_DISCONNECTED);
     net_mgmt_add_event_callback(&l4_cb);
 
+    // settings 第一次用到時才初始化，先在這裡做完，之後 work queue 和 app 才不會同時去初始化
+    char ssid[WIFI_SSID_MAX_LEN + 1];
+    (void)cred_load(PREF_SSID, ssid, sizeof(ssid));
+
     // SD 卡在這之前就掛載好了 (FILE_INIT_PRIORITY)
     return wlan_connect();
 }
@@ -369,15 +427,17 @@ static int _wlan_status(const struct shell *shell, size_t argc, char **argv)
     char ssid[WIFI_SSID_MAX_LEN + 1];
     wlan_info_t info;
 
-    if (sdconf_get(KEY_SSID, ssid, sizeof(ssid)) <= 0) {
+    if (cred_load(PREF_SSID, ssid, sizeof(ssid)) == 0) {
         strcpy(ssid, "(not set)");
     }
     // PSK 只顯示有沒有設定
     char psk[WIFI_PSK_MAX_LEN + 1];
-    int psk_len = sdconf_get(KEY_PSK, psk, sizeof(psk));
+    int psk_len = cred_load(PREF_PSK, psk, sizeof(psk));
     memset(psk, 0, sizeof(psk));
-    shell_print(shell, "Config: %s  ssid \"%s\"  psk %s", SDCONF_PATH, ssid,
-                psk_len > 0 ? "set" : "none (open network)");
+    shell_print(shell, "Saved: ssid \"%s\"  psk %s", ssid, psk_len > 0 ? "set" : "none (open network)");
+    if (sd_has_creds()) {
+        shell_print(shell, "%s has %s: it replaces the saved settings at every connect", SDCONF_PATH, KEY_SSID);
+    }
 
     if (wlan_info(&info) < 0) {
         shell_print(shell, "No Wi-Fi interface");
@@ -413,25 +473,42 @@ static int _wlan_set(const struct shell *shell, size_t argc, char **argv)
         return -EINVAL;
     }
 
-    int ret = sdconf_set(KEY_SSID, ssid);
-    ret = ret ?: sdconf_set(KEY_PSK, psk);
+    int ret = cred_save(PREF_SSID, ssid);
+    ret = ret ?: cred_save(PREF_PSK, psk ? psk : "");
     if (ret < 0) {
-        shell_error(shell, "Failed to write %s (%d), is the SD card in?", SDCONF_PATH, ret);
+        shell_error(shell, "Failed to save the settings (%d)", ret);
         return ret;
     }
-    shell_print(shell, "Saved to %s, connecting to \"%s\"", SDCONF_PATH, ssid);
+    // 設定檔裡有舊的就一起改，不然下次連線又會被它蓋回去
+    if (sd_has_creds()) {
+        ret = sdconf_set(KEY_SSID, ssid);
+        ret = ret ?: sdconf_set(KEY_PSK, psk);
+        if (ret < 0) {
+            shell_error(shell, "Failed to update %s (%d), its old values will come back", SDCONF_PATH, ret);
+            return ret;
+        }
+    }
+    shell_print(shell, "Saved, connecting to \"%s\"", ssid);
     return wlan_connect();
 }
 
 static int _wlan_forget(const struct shell *shell, size_t argc, char **argv)
 {
-    int ret = sdconf_set(KEY_SSID, NULL);
-    ret = ret ?: sdconf_set(KEY_PSK, NULL);
+    int ret = cred_save(PREF_SSID, "");
+    ret = ret ?: cred_save(PREF_PSK, "");
     if (ret < 0) {
-        shell_error(shell, "Failed to write %s (%d)", SDCONF_PATH, ret);
+        shell_error(shell, "Failed to save the settings (%d)", ret);
         return ret;
     }
-    shell_print(shell, "Removed the Wi-Fi settings from %s", SDCONF_PATH);
+    if (sd_has_creds()) {
+        ret = sdconf_set(KEY_SSID, NULL);
+        ret = ret ?: sdconf_set(KEY_PSK, NULL);
+        if (ret < 0) {
+            shell_error(shell, "Failed to update %s (%d), its values will come back", SDCONF_PATH, ret);
+            return ret;
+        }
+    }
+    shell_print(shell, "Removed the Wi-Fi settings");
     (void)wlan_disconnect();
     return 0;
 }
@@ -478,14 +555,14 @@ static int _wlan_scan(const struct shell *shell, size_t argc, char **argv)
 }
 
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_wlan,
-    SHELL_CMD_ARG(status, NULL, "Config, link state and IP address", _wlan_status, 1, 0),
+    SHELL_CMD_ARG(status, NULL, "Saved settings, link state and IP address", _wlan_status, 1, 0),
     SHELL_CMD_ARG(set, NULL,
-                  "Save to the SD card config and connect: wlan set <ssid> [psk]\n"
+                  "Save and connect: wlan set <ssid> [psk]\n"
                   "Quote an SSID with spaces: wlan set \"My Network\" password",
                   _wlan_set, 2, 1),
-    SHELL_CMD_ARG(forget, NULL, "Remove the SSID / PSK from the SD card config and disconnect",
+    SHELL_CMD_ARG(forget, NULL, "Remove the saved SSID / PSK (also from the SD card config) and disconnect",
                   _wlan_forget, 1, 0),
-    SHELL_CMD_ARG(connect, NULL, "Connect again with the saved config", _wlan_connect, 1, 0),
+    SHELL_CMD_ARG(connect, NULL, "Connect again with the saved settings", _wlan_connect, 1, 0),
     SHELL_CMD_ARG(disconnect, NULL, "Disconnect, no reconnect until wlan connect",
                   _wlan_disconnect, 1, 0),
     SHELL_CMD_ARG(scan, NULL, "List nearby networks", _wlan_scan, 1, 0),

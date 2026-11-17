@@ -79,7 +79,8 @@ config WLAN_INIT_PRIORITY
     default 95
     range 0 99
     help
-      Must come after FILE_INIT_PRIORITY: the SSID and PSK are read from the SD card.
+      Must come after FILE_INIT_PRIORITY: the SSID and PSK in the SD card config, if any,
+      replace the saved ones before connecting.
 
 config NET_JOB_STACK_SIZE
     int "Network Work Queue Stack Size"

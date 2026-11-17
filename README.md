@@ -89,12 +89,12 @@ ui remote             遙控模式
 tool imu_get          讀取加速度
 tool led_set R G B    直接設定 LED 顏色（0-255）
 
-wlan set SSID [PSK]   存到 SD 卡的 /config.txt 並連線（SSID 有空白要加引號，開放網路不給 PSK）
+wlan set SSID [PSK]   存到 flash 並連線（SSID 有空白要加引號，開放網路不給 PSK）；/config.txt 裡有 Wi-Fi 設定時一起改
 wlan status           設定、連線狀態和 IP
 wlan scan             列出附近的網路
 wlan connect          用 SD 卡上的設定重新連線
 wlan disconnect       斷線，之後不會自動重連，直到 wlan connect
-wlan forget           從 /config.txt 刪掉 SSID / PSK 並斷線
+wlan forget           刪掉存著的 SSID / PSK（/config.txt 裡的也刪）並斷線
 
 ntp status            目前時間和時區
 ntp sync              立刻重新對時
@@ -196,11 +196,13 @@ tz=+8
 
 | Key | 說明 | 預設 |
 |---|---|---|
-| `wifi_ssid` | Wi-Fi 名稱，沒有就不連網路 | |
+| `wifi_ssid` | Wi-Fi 名稱；有這行就會蓋掉存在 flash 裡的 Wi-Fi 設定（見下面） | |
 | `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元（WPA2-PSK）；開放網路不要寫 | |
 | `tz` | 時區（UTC 偏移），例如 `+8`、`-5`、`+5:30`；打開 Clock 時重新讀取 | `+8` |
 | `ntp_server` | 對時用的 NTP server | `pool.ntp.org` |
 | `weather_location` | 天氣的地點：城市名（`Taipei`、`New York`）或 `緯度,經度`；下次更新時生效 | 依 IP 判斷 |
+
+**Wi-Fi 設定存在 flash，不插 SD 卡也能連線。** 每次連線前：`/config.txt` 裡有 `wifi_ssid` 就用它和 `wifi_psk` 蓋掉存著的（內容一樣就不寫 flash），然後用存著的設定連線；沒有這一行、沒有這個檔或沒插卡，就直接用存著的。所以 `/config.txt` 只需要在第一次設定或換網路時放一次，之後可以把這兩行刪掉，密碼就不留在卡上。要讓方塊忘記網路請用 `wlan forget`，只刪掉 `/config.txt` 裡的那兩行不會忘記。`wlan status` 會顯示存著的 SSID，以及 `/config.txt` 目前會不會蓋掉它。
 
 - 一行一個 `key=value`，key 和值前後的空白會被忽略；`#` 開頭的行是註解。
 - 用指令修改時會保留其他行和註解，檔案上限 1 KB。
