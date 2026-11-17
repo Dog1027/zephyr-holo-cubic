@@ -9,7 +9,6 @@
 extern const lv_font_t font_icons;
 
 #define ICON_CLOCK    "\xF3\xB0\x85\x90"  // clock-outline
-#define ICON_WEATHER  "\xF3\xB0\x96\x95"  // weather-partly-cloudy
 #define ICON_FILES    "\xF3\xB0\x9D\xB0"  // folder-open
 #define ICON_ANIM     "\xF3\xB0\xA4\xBA"  // animation-play
 #define ICON_PHOTOS   "\xF3\xB0\x8B\xB9"  // image-multiple

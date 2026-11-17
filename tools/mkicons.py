@@ -17,7 +17,6 @@ from PIL import Image, ImageDraw, ImageFont
 # (C name, Material Design Icons name, code point)
 ICONS = [
     ("CLOCK", "clock-outline", 0xF0150),
-    ("WEATHER", "weather-partly-cloudy", 0xF0595),
     ("FILES", "folder-open", 0xF0770),
     ("ANIM", "animation-play", 0xF093A),
     ("PHOTOS", "image-multiple", 0xF02F9),

@@ -4,6 +4,8 @@
 #include "theme.h"
 
 #define UI_SCREEN_SIZE  240
+#define UI_TABS_Y       12      // ui_tabs() row: from here
+#define UI_TABS_BOTTOM  40      // to here, put the content below
 
 // Black background, no scrolling
 void ui_screen_init(lv_obj_t *scr);
@@ -35,6 +37,13 @@ const char *ui_obj_strdup(lv_obj_t *obj, const char *text);
 
 // Grey centered text inside a list, e.g. "Empty folder"
 lv_obj_t *ui_list_message(lv_obj_t *list, const char *text);
+
+// Mode tabs at the top of an app with several modes (Dice, Clock). next / prev move between them,
+// OK clicks the highlighted one. Both callbacks get the tab's index as user data
+// (lv_event_get_user_data). Adding the first tab to the group focuses it, so focused_cb runs
+// for tab 0 inside this call: create what it shows first. Tab i is lv_obj_get_child(tabs, i).
+lv_obj_t *ui_tabs(lv_obj_t *scr, const char *const names[], int count, lv_color_t accent,
+                  lv_event_cb_t focused_cb, lv_event_cb_t clicked_cb);
 
 // Invisible full screen object in the default group, receives OK (ui ok) when nothing else is selectable
 lv_obj_t *ui_tap_area(lv_obj_t *scr, lv_event_cb_t cb, void *user_data);

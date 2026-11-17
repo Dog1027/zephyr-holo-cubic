@@ -35,11 +35,6 @@ static const uint8_t pip_mask[7] = {
     BIT(0) | BIT(1) | BIT(2) | BIT(4) | BIT(5) | BIT(6),
 };
 
-// 常駐（不放 self）：style 只在第一次打開時初始化，之後每次都沿用
-static lv_style_t style_tab;
-static lv_style_t style_tab_focused;
-static bool styles_inited;
-
 typedef struct {
     lv_obj_t *dice;
     lv_obj_t *pips[7];
@@ -53,29 +48,6 @@ typedef struct {
 } self_t;
 
 APP_FG_REGISTER(Dice, ICON_DICE, app_dice_init, app_dice_run, app_dice_exit, 10, self_t);
-
-static void styles_init(void)
-{
-    if (styles_inited) {
-        return;
-    }
-    styles_inited = true;
-
-    lv_style_init(&style_tab);
-    lv_style_set_size(&style_tab, 90, 28);
-    lv_style_set_radius(&style_tab, LV_RADIUS_CIRCLE);
-    lv_style_set_border_color(&style_tab, lv_color_hex(THEME_TEXT_DIM));
-    lv_style_set_border_width(&style_tab, 1);
-    lv_style_set_bg_color(&style_tab, lv_color_hex(DICE_ACCENT_COLOR));
-    lv_style_set_bg_opa(&style_tab, LV_OPA_TRANSP);
-    lv_style_set_text_color(&style_tab, lv_color_hex(THEME_TEXT_DIM));
-    lv_style_set_text_font(&style_tab, &lv_font_montserrat_14);
-
-    lv_style_init(&style_tab_focused);
-    lv_style_set_bg_opa(&style_tab_focused, LV_OPA_COVER);
-    lv_style_set_border_width(&style_tab_focused, 0);
-    lv_style_set_text_color(&style_tab_focused, lv_color_hex(THEME_BG));
-}
 
 static void lots_load(void)
 {
@@ -172,27 +144,8 @@ static bool nav_cb(nav_cmd_t cmd)
     return true;
 }
 
-static lv_obj_t *tab_create(lv_obj_t *parent, const char *text, int tab_mode)
-{
-    lv_obj_t *tab = lv_obj_create(parent);
-    lv_obj_remove_style_all(tab);
-    lv_obj_add_style(tab, &style_tab, 0);
-    lv_obj_add_style(tab, &style_tab_focused, LV_STATE_FOCUSED);
-    lv_obj_set_scrollable(tab, false);
-
-    lv_obj_t *label = lv_label_create(tab);
-    lv_label_set_text(label, text);
-    lv_obj_center(label);
-
-    lv_obj_add_event_cb(tab, tab_focused_cb, LV_EVENT_FOCUSED, (void *)(intptr_t)tab_mode);
-    lv_obj_add_event_cb(tab, tab_clicked_cb, LV_EVENT_CLICKED, NULL);
-    lv_group_add_obj(lv_group_get_default(), tab);
-    return tab;
-}
-
 static void app_dice_init(void *scr)
 {
-    styles_init();
     ui_screen_init(scr);
     lots_load();
 
@@ -231,17 +184,9 @@ static void app_dice_init(void *scr)
     lv_obj_set_style_text_color(hint, lv_color_hex(THEME_TEXT_DIM), 0);
     lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -12);
 
-    lv_obj_t *tabs = lv_obj_create(scr);
-    lv_obj_remove_style_all(tabs);
-    lv_obj_set_size(tabs, LV_PCT(100), 28);
-    lv_obj_align(tabs, LV_ALIGN_TOP_MID, 0, 12);
-    lv_obj_set_flex_flow(tabs, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(tabs, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(tabs, 12, 0);
-
-    // 第一個 tab 加入 group 時會被 focus，觸發 mode_set，所以內容要先建好
-    tab_create(tabs, "DICE", MODE_DICE);
-    tab_create(tabs, "LOTS", MODE_LOTS);
+    // 第一個 tab 會馬上被 focus，觸發 mode_set，所以內容要先建好
+    static const char *const names[] = {"DICE", "LOTS"};
+    ui_tabs(scr, names, ARRAY_SIZE(names), lv_color_hex(DICE_ACCENT_COLOR), tab_focused_cb, tab_clicked_cb);
     nav_set_handler(nav_cb);
 }
 

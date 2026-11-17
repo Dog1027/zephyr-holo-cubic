@@ -12,8 +12,7 @@
 
 | App | 說明 |
 |---|---|
-| Clock | 網路對時的時鐘 |
-| Weather | 目前天氣和三天預報（wttr.in） |
+| Clock | 網路對時的時鐘；WEATHER 分頁是目前天氣和三天預報（wttr.in） |
 | Files | 瀏覽 SD 卡 |
 | Anim | 播放 `/anim/<名稱>/` 裡的 JPEG 序列 |
 | Photos | `/photo/` 裡的相片，可自動輪播 |

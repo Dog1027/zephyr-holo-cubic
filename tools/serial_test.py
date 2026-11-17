@@ -58,8 +58,7 @@ cmd("app list", 1)
 # (app, extra commands while it is open); avoid OK where it saves settings (Level, Light, Clock)
 # or starts Timer
 plan = [
-    ("Clock", ["ui next", "ui prev"]),
-    ("Weather", ["ui ok"]),
+    ("Clock", ["ui next", "ui ok", "ui prev"]),
     ("Files", ["ui next", "ui next", "ui ok", "ui prev"]),
     ("Anim", ["ui next", "ui ok"]),
     ("Photos", ["ui next", "ui tap", "ui prev"]),

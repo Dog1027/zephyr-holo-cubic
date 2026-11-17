@@ -4,13 +4,26 @@
 #include "prefs.h"
 #include "net_time.h"
 #include "wlan.h"
+#include "weather_page.h"
+
+/*
+ * 時鐘和天氣，用上面的分頁籤切換（跟 Dice 一樣）。OK 或敲一下：時鐘切換 12 / 24 小時制，
+ * 天氣馬上重抓。上次停在哪一頁會記住。
+ */
 
 #define CLOCK_ACCENT_COLOR  THEME_CYAN
-#define CLOCK_ARC_SIZE      200
+#define CLOCK_ARC_SIZE      196
+#define CLOCK_ARC_Y         20  // 圓環中心比畫面中心低一點，上面讓給分頁籤
 #define CLOCK_ARC_WIDTH     6
 #define CLOCK_ARC_STEP_MS    50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
 
+enum { MODE_CLOCK, MODE_WEATHER };
+
 typedef struct {
+    lv_obj_t *pages[2];     // 每個 mode 一個容器，只顯示目前那個
+    int mode;
+    int saved_mode;
+    weather_page_t weather;
     lv_obj_t *arc;
     lv_obj_t *time_label;
     lv_obj_t *ampm_label;
@@ -20,7 +33,6 @@ typedef struct {
     int32_t shown_arc;
     bool shown_synced;
     bool hour24;
-    bool pending_toggle;
 } self_t;
 
 APP_FG_REGISTER(Clock, ICON_CLOCK, app_clock_init, app_clock_run, app_clock_exit, 4, self_t);
@@ -56,30 +68,58 @@ static void show_time(const struct tm *tm)
     lv_obj_align_to(self->ampm_label, self->time_label, LV_ALIGN_OUT_RIGHT_BOTTOM, 4, -8);
 }
 
-// OK 或敲一下切換 12 / 24 小時制
-static bool nav_cb(nav_cmd_t cmd)
+static void mode_set(int mode)
 {
-    if (cmd == NAV_OK || cmd == NAV_TAP) {
-        self->pending_toggle = true;
-        return true;
-    }
-    return false;
+    self->mode = mode;
+    lv_obj_set_hidden(self->pages[MODE_CLOCK], mode != MODE_CLOCK);
+    lv_obj_set_hidden(self->pages[MODE_WEATHER], mode != MODE_WEATHER);
 }
 
-static void app_clock_init(void *scr)
+static void tab_focused_cb(lv_event_t *e)
 {
-    uint8_t saved;
+    mode_set((int)(intptr_t)lv_event_get_user_data(e));
+}
 
-    ui_screen_init(scr);
-    self->hour24 = true;
-    if (prefs_load("clock/24h", &saved, sizeof(saved)) == sizeof(saved)) {
-        self->hour24 = saved != 0;
+// OK（點目前的分頁籤）或敲一下
+static void tab_clicked_cb(lv_event_t *e)
+{
+    if (self->mode == MODE_WEATHER) {
+        weather_page_refresh();
+        return;
     }
+    self->hour24 = !self->hour24;
+    uint8_t saved = self->hour24;
+    prefs_save("clock/24h", &saved, sizeof(saved));
+    self->shown_key = -1;
+}
+
+// 敲一下跟 OK 一樣，不是切換分頁
+static bool nav_cb(nav_cmd_t cmd)
+{
+    if (cmd != NAV_TAP) {
+        return false;
+    }
+    tab_clicked_cb(NULL);
+    return true;
+}
+
+static lv_obj_t *page_create(lv_obj_t *scr)
+{
+    lv_obj_t *page = lv_obj_create(scr);
+    lv_obj_remove_style_all(page);
+    lv_obj_set_size(page, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_scrollable(page, false);
+    lv_obj_set_clickable(page, false);
+    return page;
+}
+
+static void clock_page_create(lv_obj_t *scr)
+{
 
     // 秒數圓環：一分鐘走一圈，單位是 CLOCK_ARC_STEP_MS
     self->arc = lv_arc_create(scr);
     lv_obj_set_size(self->arc, CLOCK_ARC_SIZE, CLOCK_ARC_SIZE);
-    lv_obj_center(self->arc);
+    lv_obj_align(self->arc, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y);
     lv_arc_set_rotation(self->arc, 270);
     lv_arc_set_bg_angles(self->arc, 0, 360);
     lv_arc_set_range(self->arc, 0, 60000 / CLOCK_ARC_STEP_MS);
@@ -92,29 +132,46 @@ static void app_clock_init(void *scr)
     lv_obj_set_style_arc_color(self->arc, lv_color_hex(CLOCK_ACCENT_COLOR), LV_PART_INDICATOR);
 
     self->time_label = ui_label(scr, &lv_font_montserrat_48, THEME_TEXT);
-    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y - 10);
     self->ampm_label = ui_label(scr, &lv_font_montserrat_14, CLOCK_ACCENT_COLOR);
     self->date_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT_DIM);
-    lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, 34);
+    lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
     self->status_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
-    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 34);
+    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
+}
 
+static void app_clock_init(void *scr)
+{
+    uint8_t saved;
+
+    ui_screen_init(scr);
+    self->hour24 = true;
+    if (prefs_load("clock/24h", &saved, sizeof(saved)) == sizeof(saved)) {
+        self->hour24 = saved != 0;
+    }
+    self->saved_mode = MODE_CLOCK;
+    if (prefs_load("clock/mode", &saved, sizeof(saved)) == sizeof(saved) && saved == MODE_WEATHER) {
+        self->saved_mode = MODE_WEATHER;
+    }
     self->shown_key = -1;
     self->shown_arc = -1;
+
+    self->pages[MODE_CLOCK] = page_create(scr);
+    clock_page_create(self->pages[MODE_CLOCK]);
+    self->pages[MODE_WEATHER] = page_create(scr);
+    weather_page_create(&self->weather, self->pages[MODE_WEATHER]);
+
+    // 第一個分頁籤會馬上被 focus，觸發 mode_set，所以內容要先建好
+    static const char *const names[] = {"CLOCK", "WEATHER"};
+    lv_obj_t *tabs = ui_tabs(scr, names, ARRAY_SIZE(names), lv_color_hex(CLOCK_ACCENT_COLOR), tab_focused_cb,
+                             tab_clicked_cb);
+    lv_group_focus_obj(lv_obj_get_child(tabs, self->saved_mode));
     nav_set_handler(nav_cb);
 }
 
-static void app_clock_run(void *scr)
+static void clock_page_run(void)
 {
     struct tm tm;
-
-    if (self->pending_toggle) {
-        self->pending_toggle = false;
-        self->hour24 = !self->hour24;
-        uint8_t saved = self->hour24;
-        prefs_save("clock/24h", &saved, sizeof(saved));
-        self->shown_key = -1;
-    }
 
     // 文字每秒最多重畫一次：對時前用開機秒數（只是更新 Wi-Fi 狀態），對時後用實際時間
     bool synced = net_time_now(&tm);
@@ -142,6 +199,20 @@ static void app_clock_run(void *scr)
     }
 }
 
+static void app_clock_run(void *scr)
+{
+    if (self->mode == MODE_WEATHER) {
+        weather_page_run(&self->weather);
+    }
+    else {
+        clock_page_run();
+    }
+}
+
 static void app_clock_exit(void *scr)
 {
+    if (self->mode != self->saved_mode) {
+        uint8_t saved = self->mode;
+        prefs_save("clock/mode", &saved, sizeof(saved));
+    }
 }
