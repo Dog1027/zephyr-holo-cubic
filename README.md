@@ -153,6 +153,7 @@ just gif2jpg cat.gif out/cat 120x120
 不用拔 SD 卡：打開 Share，畫面會顯示網址（例如 `http://192.168.1.20/`）和一組 4 位數 PIN。PIN 存在 flash，每次都是同一組，瀏覽器輸入一次後，到關掉瀏覽器為止都不用再輸入；想換的時候在 Share 裡按 OK 產生新的，舊的馬上失效。連續錯 5 次會鎖 30 秒。
 
 - **瀏覽器**：打開網址，輸入 PIN，就能瀏覽資料夾、上傳（選檔案或直接拖進去，有進度）、點檔名下載 / 預覽、刪除、建立資料夾。
+- **照片不用先轉檔**：在網頁上進到 `photo` 資料夾後上傳的圖片（任何瀏覽器看得懂的格式），會先在瀏覽器裡縮成 240x240（置中裁切）的 JPEG 再傳，檔名裡不能用的字元換成 `_`。用 curl 上傳不會轉，要先跑 `just img2jpg`。
 - **curl**：用 `-b pin=1234`（或 `-H "X-Pin: 1234"`、網址加 `?pin=1234`）帶 PIN。
 
 ```bash
@@ -261,7 +262,7 @@ tz=+8
 - **`exit`**：離開時呼叫，用來釋放自己配置的資源；畫面上的物件由框架刪除。
 - **只能在這三個 callback 裡呼叫 LVGL**，所有 LVGL 操作都在同一個 thread。
 - **可選取的物件**要加進 `lv_group_get_default()`，並移除 `LV_OBJ_FLAG_SCROLLABLE`，選取時會收到 `LV_EVENT_CLICKED`。`ui_list_item()` 和 `ui_tap_area()` 已經處理好這些。
-- **新增圖示**：圖示是 Material Design Icons 做成的小字型（56 px，只含用到的十幾個，約 16 KB flash）。在 `tools/mkicons.py` 的 `ICONS` 加一行（名稱和代碼查 nerdfonts.com 的 cheat sheet，`nf-md-*`），然後執行 `uv run python tools/mkicons.py <任一個 Nerd Font Propo 字型檔> --preview icons.png`，會重新產生 `src/icons.c` 和 `include/icons.h`。`ICON_*` 只能用在 Menu 圖示，其他地方的小符號照舊用 `LV_SYMBOL_*`。
+- **新增圖示**：圖示是 Material Design Icons 做成的小字型（72 px，只含用到的十幾個，約 26 KB flash）。在 `tools/mkicons.py` 的 `ICONS` 加一行（名稱和代碼查 nerdfonts.com 的 cheat sheet，`nf-md-*`），然後執行 `uv run python tools/mkicons.py <任一個 Nerd Font Propo 字型檔> --preview icons.png`，會重新產生 `src/icons.c` 和 `include/icons.h`。`ICON_*` 只能用在 Menu 圖示，其他地方的小符號照舊用 `LV_SYMBOL_*`。
 - **想自己處理 next / prev / ok / 敲擊**（例如換照片）：在 `init` 呼叫 `nav_set_handler()`，回傳 `true` 表示已處理；app 關閉時框架會自動清掉。
 - **常用的共用函式**，先找這裡再自己寫：
   - `ui.h`：`ui_label()`（字型 + 顏色）、`ui_label_set_fmt()`（文字有變才更新）、`ui_list_row()`（右邊帶數值的列表項）。

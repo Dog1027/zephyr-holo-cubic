@@ -16,6 +16,7 @@
 #define PHOTO_START_DELAY_MS  50      // 淡入動畫結束後再多等一下才開始直接畫
 #define PHOTO_BLINK_MS        150
 #define PHOTO_BLINK_COLOR     0x2ec4d6
+#define PHOTO_DETAIL_COLOR    0xaab4c8
 
 typedef struct {
     lv_obj_t *scr;
@@ -105,14 +106,19 @@ static int photos_load(void)
     return n;
 }
 
-static void message_show(const char *text)
+// 黑底上暗色的小字透過稜鏡幾乎看不到：主要的一行用白色大字，說明用亮一點的灰
+static void message_show(const char *text, const char *detail)
 {
-    lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+    lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_18, 0xffffff);
 
-    ui_title(self->scr, "Photos");
     lv_label_set_text(label, text);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(label);
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, -36);
+
+    label = ui_label(self->scr, &lv_font_montserrat_14, PHOTO_DETAIL_COLOR);
+    lv_label_set_text(label, detail);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 24);
 }
 
 static int photo_find(int index, char *path, size_t size)
@@ -143,7 +149,7 @@ static void photo_show(int index, int step)
     // 一張都畫不出來（常見：沒轉檔的原圖，太大或是 progressive）：回到 LVGL 畫面說明原因，不再重試
     LOG_ERR("No photo could be shown");
     self->photo_count = 0;
-    message_show("No photo can be shown.\nThey must be baseline JPEG,\n240x240 or smaller:\njust img2jpg <in> <out>");
+    message_show(LV_SYMBOL_WARNING "  Cannot show\nthe photos", "They must be JPEG, 240x240 or\nsmaller. Upload them with the\nShare web page (it resizes)\nor convert: just img2jpg");
     lv_obj_invalidate(self->scr);
 }
 
@@ -178,7 +184,7 @@ static void app_photos_init(void *scr)
     LOG_INF("%d photos in %s", self->photo_count, PHOTO_ROOT);
 
     if (self->photo_count == 0) {
-        message_show("Put JPEG files in\n/photo on the SD card");
+        message_show("No photos", "Put JPEG files in /photo\non the SD card, e.g. with\nthe Share app");
         return;
     }
 

@@ -52,7 +52,7 @@ def render(font, cp):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("font")
-    p.add_argument("--size", type=int, default=56, help="font size in pixels (the glyphs are a bit smaller)")
+    p.add_argument("--size", type=int, default=72, help="font size in pixels (the glyphs are a bit smaller)")
     p.add_argument("--preview", help="also write a PNG with all icons")
     args = p.parse_args()
 
