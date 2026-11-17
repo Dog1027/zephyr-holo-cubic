@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the Menu's app icon font (src/icons.c, include/icons.h) from an icon font file.
 
-Usage: mkicons.py FONT [--size 56] [--preview icons.png]
+Usage: uv run python tools/mkicons.py FONT [--size 72] [--preview icons.png]
 
 FONT is any Nerd Font "Propo" file (they bundle Material Design Icons, whose code points are
 used below), e.g. ~/.local/share/fonts/UbuntuNerdFontPropo-Regular.ttf. To change or add an icon,
