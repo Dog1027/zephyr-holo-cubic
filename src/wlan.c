@@ -185,14 +185,26 @@ static bool sd_has_creds(void)
     return sdconf_get(KEY_SSID, ssid, sizeof(ssid)) > 0;
 }
 
-// 設定檔裡有 wifi_ssid 就用它（和 wifi_psk）蓋掉存著的；沒有這行、沒有檔案或沒插卡就不動。
-// 內容一樣就不寫，不會每次開機都寫 flash
+static void sd_creds_remove(void)
+{
+    int ret = sdconf_set(KEY_SSID, NULL);
+
+    ret = ret ?: sdconf_set(KEY_PSK, NULL);
+    if (ret < 0) {
+        LOG_WRN("Cannot remove the Wi-Fi lines from %s (%d), they will be imported again", SDCONF_PATH, ret);
+    }
+}
+
+// 匯入：設定檔裡有 wifi_ssid 就用它（和 wifi_psk）蓋掉存著的，存好之後把這兩行從檔案刪掉，
+// 設定只留在 settings 一個地方（不會互相蓋，密碼也不留在卡上）。
+// 沒有這行、沒有檔案或沒插卡就不動。內容一樣就不寫 flash
 static void creds_from_sd(void)
 {
     char ssid[WIFI_SSID_MAX_LEN + 1];
     char psk[WIFI_PSK_MAX_LEN + 1];
     char saved[WIFI_PSK_MAX_LEN + 1];
     bool changed = false;
+    int ret = 0;
 
     if (sdconf_get(KEY_SSID, ssid, sizeof(ssid)) <= 0) {
         return;
@@ -202,14 +214,18 @@ static void creds_from_sd(void)
     }
     cred_load(PREF_SSID, saved, sizeof(saved));
     if (strcmp(saved, ssid) != 0) {
-        changed = cred_save(PREF_SSID, ssid) == 0;
+        changed = true;
+        ret = cred_save(PREF_SSID, ssid);
     }
     cred_load(PREF_PSK, saved, sizeof(saved));
-    if (strcmp(saved, psk) != 0) {
-        changed = cred_save(PREF_PSK, psk) == 0;
+    if (ret == 0 && strcmp(saved, psk) != 0) {
+        changed = true;
+        ret = cred_save(PREF_PSK, psk);
     }
-    if (changed) {
-        LOG_INF("Wi-Fi settings updated from %s", SDCONF_PATH);
+    // 沒存成功就留著那兩行，下次再匯入
+    if (ret == 0) {
+        LOG_INF("Wi-Fi settings imported from %s%s", SDCONF_PATH, changed ? "" : " (same as saved)");
+        sd_creds_remove();
     }
     memset(psk, 0, sizeof(psk));
     memset(saved, 0, sizeof(saved));
@@ -436,7 +452,7 @@ static int _wlan_status(const struct shell *shell, size_t argc, char **argv)
     memset(psk, 0, sizeof(psk));
     shell_print(shell, "Saved: ssid \"%s\"  psk %s", ssid, psk_len > 0 ? "set" : "none (open network)");
     if (sd_has_creds()) {
-        shell_print(shell, "%s has %s: it replaces the saved settings at every connect", SDCONF_PATH, KEY_SSID);
+        shell_print(shell, "%s has %s: it replaces the saved settings at the next connect", SDCONF_PATH, KEY_SSID);
     }
 
     if (wlan_info(&info) < 0) {
@@ -479,14 +495,9 @@ static int _wlan_set(const struct shell *shell, size_t argc, char **argv)
         shell_error(shell, "Failed to save the settings (%d)", ret);
         return ret;
     }
-    // 設定檔裡有舊的就一起改，不然下次連線又會被它蓋回去
+    // 設定檔裡還有沒匯入的就刪掉，不然接下來連線時會被它蓋回去
     if (sd_has_creds()) {
-        ret = sdconf_set(KEY_SSID, ssid);
-        ret = ret ?: sdconf_set(KEY_PSK, psk);
-        if (ret < 0) {
-            shell_error(shell, "Failed to update %s (%d), its old values will come back", SDCONF_PATH, ret);
-            return ret;
-        }
+        sd_creds_remove();
     }
     shell_print(shell, "Saved, connecting to \"%s\"", ssid);
     return wlan_connect();
@@ -501,12 +512,7 @@ static int _wlan_forget(const struct shell *shell, size_t argc, char **argv)
         return ret;
     }
     if (sd_has_creds()) {
-        ret = sdconf_set(KEY_SSID, NULL);
-        ret = ret ?: sdconf_set(KEY_PSK, NULL);
-        if (ret < 0) {
-            shell_error(shell, "Failed to update %s (%d), its values will come back", SDCONF_PATH, ret);
-            return ret;
-        }
+        sd_creds_remove();
     }
     shell_print(shell, "Removed the Wi-Fi settings");
     (void)wlan_disconnect();
@@ -560,7 +566,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_wlan,
                   "Save and connect: wlan set <ssid> [psk]\n"
                   "Quote an SSID with spaces: wlan set \"My Network\" password",
                   _wlan_set, 2, 1),
-    SHELL_CMD_ARG(forget, NULL, "Remove the saved SSID / PSK (also from the SD card config) and disconnect",
+    SHELL_CMD_ARG(forget, NULL, "Remove the saved SSID / PSK and disconnect",
                   _wlan_forget, 1, 0),
     SHELL_CMD_ARG(connect, NULL, "Connect again with the saved settings", _wlan_connect, 1, 0),
     SHELL_CMD_ARG(disconnect, NULL, "Disconnect, no reconnect until wlan connect",
