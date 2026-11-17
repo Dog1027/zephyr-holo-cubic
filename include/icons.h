@@ -8,18 +8,19 @@
  */
 extern const lv_font_t font_icons;
 
-#define ICON_CLOCK   "\xF3\xB0\x85\x90"  // clock-outline
-#define ICON_WEATHER "\xF3\xB0\x96\x95"  // weather-partly-cloudy
-#define ICON_FILES   "\xF3\xB0\x9D\xB0"  // folder-open
-#define ICON_ANIM    "\xF3\xB0\xA4\xBA"  // animation-play
-#define ICON_PHOTOS  "\xF3\xB0\x8B\xB9"  // image-multiple
-#define ICON_LEVEL   "\xF3\xB1\x93\xB1"  // spirit-level
-#define ICON_DICE    "\xF3\xB0\x87\x8E"  // dice-5
-#define ICON_LIGHT   "\xF3\xB0\x9B\xA8"  // lightbulb-on
-#define ICON_TIMER   "\xF3\xB0\x94\x9B"  // timer-outline
-#define ICON_SYSINFO "\xF3\xB0\x8D\x9B"  // memory
-#define ICON_NETWORK "\xF3\xB0\x96\xA9"  // wifi
-#define ICON_SHARE   "\xF3\xB0\xA1\xB0"  // folder-network
-#define ICON_CAST    "\xF3\xB0\x84\x98"  // cast
-#define ICON_TEST    "\xF3\xB0\x82\x93"  // flask
-#define ICON_DEFAULT "\xF3\xB0\x88\x94"  // file
+#define ICON_CLOCK    "\xF3\xB0\x85\x90"  // clock-outline
+#define ICON_WEATHER  "\xF3\xB0\x96\x95"  // weather-partly-cloudy
+#define ICON_FILES    "\xF3\xB0\x9D\xB0"  // folder-open
+#define ICON_ANIM     "\xF3\xB0\xA4\xBA"  // animation-play
+#define ICON_PHOTOS   "\xF3\xB0\x8B\xB9"  // image-multiple
+#define ICON_LEVEL    "\xF3\xB1\x93\xB1"  // spirit-level
+#define ICON_DICE     "\xF3\xB0\x87\x8E"  // dice-5
+#define ICON_LIGHT    "\xF3\xB0\x9B\xA8"  // lightbulb-on
+#define ICON_TIMER    "\xF3\xB0\x94\x9B"  // timer-outline
+#define ICON_SYSINFO  "\xF3\xB0\x8D\x9B"  // memory
+#define ICON_NETWORK  "\xF3\xB0\x96\xA9"  // wifi
+#define ICON_SHARE    "\xF3\xB0\xA1\xB0"  // folder-network
+#define ICON_CAST     "\xF3\xB0\x84\x98"  // cast
+#define ICON_AQUARIUM "\xF3\xB0\xBC\x81"  // jellyfish
+#define ICON_TEST     "\xF3\xB0\x82\x93"  // flask
+#define ICON_DEFAULT  "\xF3\xB0\x88\x94"  // file

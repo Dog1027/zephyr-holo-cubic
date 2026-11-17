@@ -29,6 +29,7 @@ ICONS = [
     ("NETWORK", "wifi", 0xF05A9),
     ("SHARE", "folder-network", 0xF0870),
     ("CAST", "cast", 0xF0118),
+    ("AQUARIUM", "jellyfish", 0xF0F01),
     ("TEST", "flask", 0xF0093),
     ("DEFAULT", "file", 0xF0214),
 ]
