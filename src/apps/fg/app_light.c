@@ -34,7 +34,7 @@ typedef struct {
     int saved;      // 確認過的顏色，init 時從 led.c 的基礎顏色讀回來（離開 app 後 LED 繼續亮）
 } self_t;
 
-APP_FG_REGISTER(Light, LV_SYMBOL_CHARGE, app_light_init, app_light_run, app_light_exit, 11, self_t);
+APP_FG_REGISTER(Light, ICON_LIGHT, app_light_init, app_light_run, app_light_exit, 11, self_t);
 
 static void styles_init(void)
 {

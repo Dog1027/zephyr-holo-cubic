@@ -36,7 +36,7 @@ typedef struct {
     int64_t last_refresh;
 } self_t;
 
-APP_FG_REGISTER(Network, LV_SYMBOL_WIFI, app_net_init, app_net_run, app_net_exit, 14, self_t);
+APP_FG_REGISTER(Network, ICON_NETWORK, app_net_init, app_net_run, app_net_exit, 14, self_t);
 
 static lv_obj_t *row_create(const char *icon, const char *name)
 {

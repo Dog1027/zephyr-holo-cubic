@@ -1,6 +1,7 @@
 #include "bg_app.h"
 #include "app_list.h"
 #include "ui.h"
+#include "icons.h"
 #include "net_time.h"
 #include "wlan.h"
 
@@ -78,7 +79,7 @@ static void styles_init(void)
     lv_style_set_bg_opa(&style_icon, LV_OPA_30);
     lv_style_set_text_color(&style_icon, lv_color_white());
     lv_style_set_text_opa(&style_icon, LV_OPA_50);
-    lv_style_set_text_font(&style_icon, &lv_font_montserrat_48);
+    lv_style_set_text_font(&style_icon, &font_icons);
     lv_style_set_transition(&style_icon, &tr);
 
     lv_style_init(&style_icon_focused);
@@ -138,7 +139,7 @@ static lv_obj_t *icon_create(lv_obj_t *parent, int index, const app_t *app)
     lv_obj_set_scrollable(icon, false);
 
     lv_obj_t *symbol = lv_label_create(icon);
-    lv_label_set_text(symbol, app->icon ? app->icon : LV_SYMBOL_FILE);
+    lv_label_set_text(symbol, app->icon ? app->icon : ICON_DEFAULT);
     lv_obj_center(symbol);
 
     lv_obj_add_event_cb(icon, icon_focused_cb, LV_EVENT_FOCUSED, (void *)(intptr_t)index);

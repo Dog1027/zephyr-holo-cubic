@@ -18,7 +18,7 @@ typedef struct {
     bool pending;
 } self_t;
 
-APP_FG_REGISTER(Files, LV_SYMBOL_DIRECTORY, app_files_init, app_files_run, app_files_exit, 6, self_t);
+APP_FG_REGISTER(Files, ICON_FILES, app_files_init, app_files_run, app_files_exit, 6, self_t);
 
 static void format_size(char *buf, size_t len, size_t size)
 {

@@ -35,7 +35,7 @@ typedef struct {
     jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
-APP_FG_REGISTER(Cast, LV_SYMBOL_VIDEO, app_cast_init, app_cast_run, app_cast_exit, 16, self_t);
+APP_FG_REGISTER(Cast, ICON_CAST, app_cast_init, app_cast_run, app_cast_exit, 16, self_t);
 
 // 讀滿 len bytes（buf 為 NULL 時丟掉），逾時或斷線就停，回傳讀到的量
 static size_t recv_full(uint8_t *buf, size_t len)

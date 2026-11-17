@@ -52,7 +52,7 @@ typedef struct {
     int64_t next_step_ms;
 } self_t;
 
-APP_FG_REGISTER(Dice, LV_SYMBOL_SHUFFLE, app_dice_init, app_dice_run, app_dice_exit, 10, self_t);
+APP_FG_REGISTER(Dice, ICON_DICE, app_dice_init, app_dice_run, app_dice_exit, 10, self_t);
 
 static void styles_init(void)
 {

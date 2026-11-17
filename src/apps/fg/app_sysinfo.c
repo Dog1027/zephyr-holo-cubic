@@ -37,7 +37,7 @@ typedef struct {
     int64_t last_sd_refresh;
 } self_t;
 
-APP_FG_REGISTER(SysInfo, LV_SYMBOL_LIST, app_sysinfo_init, app_sysinfo_run, app_sysinfo_exit, 13, self_t);
+APP_FG_REGISTER(SysInfo, ICON_SYSINFO, app_sysinfo_init, app_sysinfo_run, app_sysinfo_exit, 13, self_t);
 
 static lv_obj_t *row_create(lv_obj_t *list, const char *icon, const char *name)
 {

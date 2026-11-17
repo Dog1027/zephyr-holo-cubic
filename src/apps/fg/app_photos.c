@@ -18,6 +18,7 @@
 #define PHOTO_BLINK_COLOR     0x2ec4d6
 
 typedef struct {
+    lv_obj_t *scr;
     int photo_count;
     int photo_index;
     bool started;
@@ -31,7 +32,7 @@ typedef struct {
     jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
-APP_FG_REGISTER(Photos, LV_SYMBOL_IMAGE, app_photos_init, app_photos_run, app_photos_exit, 8, self_t);
+APP_FG_REGISTER(Photos, ICON_PHOTOS, app_photos_init, app_photos_run, app_photos_exit, 8, self_t);
 
 static void photos_free(void)
 {
@@ -104,6 +105,16 @@ static int photos_load(void)
     return n;
 }
 
+static void message_show(const char *text)
+{
+    lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_14, UI_DIM_COLOR);
+
+    ui_title(self->scr, "Photos");
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(label);
+}
+
 static int photo_find(int index, char *path, size_t size)
 {
     int len = snprintf(path, size, "%s/%s", PHOTO_ROOT, &self->names[self->name_offsets[index]]);
@@ -129,7 +140,11 @@ static void photo_show(int index, int step)
         LOG_ERR("Skip photo %d (%d)", index, ret);
         index += step;
     }
+    // 一張都畫不出來（常見：沒轉檔的原圖，太大或是 progressive）：回到 LVGL 畫面說明原因，不再重試
     LOG_ERR("No photo could be shown");
+    self->photo_count = 0;
+    message_show("No photo can be shown.\nThey must be baseline JPEG,\n240x240 or smaller:\njust img2jpg <in> <out>");
+    lv_obj_invalidate(self->scr);
 }
 
 // next / tap 下一張，prev 上一張，ok 開關幻燈片；只記下來，交給 run 畫
@@ -155,6 +170,7 @@ static void app_photos_init(void *scr)
 {
     ui_screen_init(scr);
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    self->scr = scr;
 
     self->start_ms = k_uptime_get();
 
@@ -162,13 +178,7 @@ static void app_photos_init(void *scr)
     LOG_INF("%d photos in %s", self->photo_count, PHOTO_ROOT);
 
     if (self->photo_count == 0) {
-        ui_title(scr, "Photos");
-        lv_obj_t *label = lv_label_create(scr);
-        lv_label_set_text(label, "Put JPEG files in\n/photo on the SD card");
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(label, lv_color_hex(UI_DIM_COLOR), 0);
-        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_center(label);
+        message_show("Put JPEG files in\n/photo on the SD card");
         return;
     }
 

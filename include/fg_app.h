@@ -4,11 +4,12 @@
 #include <zephyr/logging/log.h>
 #include <lvgl.h>
 #include "app.h"
+#include "icons.h"
 
 /*
  * Register a foreground app.
  * _prio:    order in the menu, 0 is reserved for the background app
- * _icon:    LV_SYMBOL_* shown in the menu, NULL for a default icon
+ * _icon:    ICON_* (icons.h) shown in the menu, NULL for a default icon
  * _state_t: struct with everything the app keeps while it is open, by convention
  *           `typedef struct { ... } self_t;` in the app's file; app_no_state_t for none.
  *

@@ -29,7 +29,7 @@ typedef struct {
     jpeg_mem_t jpeg;    // 解碼用的工作區（約 27 KB），不用初始化
 } self_t;
 
-APP_FG_REGISTER(Anim, LV_SYMBOL_PLAY, app_anim_init, app_anim_run, app_anim_exit, 7, self_t);
+APP_FG_REGISTER(Anim, ICON_ANIM, app_anim_init, app_anim_run, app_anim_exit, 7, self_t);
 
 static int frame_show(int index)
 {

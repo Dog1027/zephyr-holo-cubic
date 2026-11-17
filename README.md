@@ -220,7 +220,7 @@ tz=+8
        uint32_t shown;
    } self_t;
 
-   APP_FG_REGISTER(Uptime, LV_SYMBOL_BELL, app_uptime_init, app_uptime_run, app_uptime_exit, 20,
+   APP_FG_REGISTER(Uptime, ICON_TIMER, app_uptime_init, app_uptime_run, app_uptime_exit, 20,
                    self_t);
 
    static void app_uptime_init(void *scr)
@@ -249,7 +249,7 @@ tz=+8
 
 規則：
 
-- **註冊參數**：名稱、Menu 圖示（`LV_SYMBOL_*`）、三個 callback、priority、state 型別。priority 決定在 Menu 的順序，不能是 0（保留給 Menu），每個 app 用不同的值。
+- **註冊參數**：名稱、Menu 圖示（`icons.h` 的 `ICON_*`，給 `NULL` 會用預設的檔案圖示）、三個 callback、priority、state 型別。priority 決定在 Menu 的順序，不能是 0（保留給 Menu），每個 app 用不同的值。
 - **狀態放在 `self_t`**：app 開著時要記住的東西（LVGL 物件、畫面狀態、小 buffer）都放進 `self_t`，用 `self->` 存取，不要寫成 `static` 變數。所有前景 app 共用同一塊記憶體（`CONFIG_APP_STATE_SIZE`，放在 DRAM region 1），框架在 `init` 之前把它清成 0，app 關閉後就交給下一個 app。沒有狀態的 app 用 `app_no_state_t`。
   - 0 以外的初始值要在 `init` 裡設定。
   - `self_t` 放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`（目前 27.5 KB）。只在某個函式裡用的大 buffer 放 stack，不要放 `self_t`。
@@ -261,6 +261,7 @@ tz=+8
 - **`exit`**：離開時呼叫，用來釋放自己配置的資源；畫面上的物件由框架刪除。
 - **只能在這三個 callback 裡呼叫 LVGL**，所有 LVGL 操作都在同一個 thread。
 - **可選取的物件**要加進 `lv_group_get_default()`，並移除 `LV_OBJ_FLAG_SCROLLABLE`，選取時會收到 `LV_EVENT_CLICKED`。`ui_list_item()` 和 `ui_tap_area()` 已經處理好這些。
+- **新增圖示**：圖示是 Material Design Icons 做成的小字型（56 px，只含用到的十幾個，約 16 KB flash）。在 `tools/mkicons.py` 的 `ICONS` 加一行（名稱和代碼查 nerdfonts.com 的 cheat sheet，`nf-md-*`），然後執行 `uv run python tools/mkicons.py <任一個 Nerd Font Propo 字型檔> --preview icons.png`，會重新產生 `src/icons.c` 和 `include/icons.h`。`ICON_*` 只能用在 Menu 圖示，其他地方的小符號照舊用 `LV_SYMBOL_*`。
 - **想自己處理 next / prev / ok / 敲擊**（例如換照片）：在 `init` 呼叫 `nav_set_handler()`，回傳 `true` 表示已處理；app 關閉時框架會自動清掉。
 - **常用的共用函式**，先找這裡再自己寫：
   - `ui.h`：`ui_label()`（字型 + 顏色）、`ui_label_set_fmt()`（文字有變才更新）、`ui_list_row()`（右邊帶數值的列表項）。
@@ -282,6 +283,7 @@ src/
   input.c               MPU6050 姿態角與敲擊偵測
   gui.c                 螢幕與背光初始化
   ui.c                  共用的 LVGL 元件（標題、清單）
+  icons.c               Menu 的 app 圖示字型（tools/mkicons.py 產生，不要手改）
   jpeg.c                JPEG 解碼後直接寫到螢幕
   led.c                 RGB LED 與基礎顏色
   prefs.c               斷電保存的設定（settings / NVS）
@@ -296,7 +298,7 @@ src/
   lib/tjpgd/            TJpgDec（專案內的設定，見 tjpgdcnf.h）
   apps/bg/app_menu.c    Menu
   apps/fg/              各個 app
-tools/                  圖片與動畫轉檔、投影（cast.py）與序列埠測試
+tools/                  圖片與動畫轉檔、投影（cast.py）、圖示字型（mkicons.py）與測試
 ```
 
 ## 注意事項

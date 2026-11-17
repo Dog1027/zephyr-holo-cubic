@@ -112,7 +112,7 @@ typedef struct {
     bool ui_dirty;
 } self_t;
 
-APP_FG_REGISTER(Share, LV_SYMBOL_DRIVE, app_share_init, app_share_run, app_share_exit, 15, self_t);
+APP_FG_REGISTER(Share, ICON_SHARE, app_share_init, app_share_run, app_share_exit, 15, self_t);
 
 static const char page[] =
     "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"

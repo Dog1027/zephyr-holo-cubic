@@ -25,7 +25,7 @@ typedef struct {
     int is_level;
 } self_t;
 
-APP_FG_REGISTER(Level, LV_SYMBOL_GPS, app_level_init, app_level_run, app_level_exit, 9, self_t);
+APP_FG_REGISTER(Level, ICON_LEVEL, app_level_init, app_level_run, app_level_exit, 9, self_t);
 
 static lv_obj_t *circle_create(lv_obj_t *parent, int32_t size)
 {

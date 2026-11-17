@@ -21,7 +21,7 @@ typedef struct {
     bool pending_toggle;
 } self_t;
 
-APP_FG_REGISTER(Clock, LV_SYMBOL_LOOP, app_clock_init, app_clock_run, app_clock_exit, 4, self_t);
+APP_FG_REGISTER(Clock, ICON_CLOCK, app_clock_init, app_clock_run, app_clock_exit, 4, self_t);
 
 // 還沒對時：說明原因
 static void show_status(void)

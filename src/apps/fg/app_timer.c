@@ -30,7 +30,7 @@ typedef struct {
     bool face_down;
 } self_t;
 
-APP_FG_REGISTER(Timer, LV_SYMBOL_BELL, app_timer_init, app_timer_run, app_timer_exit, 12, self_t);
+APP_FG_REGISTER(Timer, ICON_TIMER, app_timer_init, app_timer_run, app_timer_exit, 12, self_t);
 
 // 計時狀態放在 app 外面，離開 app 也會繼續跑，回來時接著顯示
 static timer_state_t state = STATE_SET;

@@ -18,6 +18,7 @@ target_sources(app PRIVATE
   src/file.c
   src/input.c
   src/ui.c
+  src/icons.c
   src/jpeg.c
   src/led.c
   src/prefs.c

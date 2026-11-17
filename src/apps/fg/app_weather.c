@@ -37,7 +37,7 @@ typedef struct {
     bool pending_update;
 } self_t;
 
-APP_FG_REGISTER(Weather, LV_SYMBOL_TINT, app_weather_init, app_weather_run, app_weather_exit, 5, self_t);
+APP_FG_REGISTER(Weather, ICON_WEATHER, app_weather_init, app_weather_run, app_weather_exit, 5, self_t);
 
 /* ---------- 圖示：用圓形和圓角矩形拼出來，座標都是圖示大小的比例 ---------- */
 
