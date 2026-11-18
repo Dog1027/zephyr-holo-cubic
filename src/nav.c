@@ -38,6 +38,13 @@ static void nav_apply(nav_cmd_t cmd, bool in_app)
     if (handler != NULL && handler(cmd)) {
         return;
     }
+    // 沒人處理的方向當成上一個 / 下一個，再給 handler 一次機會（例如 Photos 換相片）
+    if (cmd == NAV_UP || cmd == NAV_LEFT || cmd == NAV_DOWN || cmd == NAV_RIGHT) {
+        cmd = cmd == NAV_UP || cmd == NAV_LEFT ? NAV_PREV : NAV_NEXT;
+        if (handler != NULL && handler(cmd)) {
+            return;
+        }
+    }
     // 敲擊容易誤觸，在 Menu 不移動選擇，只在 app 裡當成「下一個」
     if (cmd == NAV_TAP && !in_app) {
         return;

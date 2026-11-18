@@ -17,7 +17,7 @@
  * 系統狀態，兩個分頁（ui_tabs.h）：
  *   SYSTEM：開機時間、heap、SD 卡、姿態、各 thread 的 stack 用量
  *   WI-FI：連線狀態、訊號強度曲線、附近的網路（切到這頁時掃描）
- * 兩頁都是只能看的清單，OK 或敲一下往下捲一頁，到底再回到最上面。
+ * 兩頁都是只能看的清單：上下捲動，OK 或敲一下往下捲一頁、到底再回到最上面。
  * 只建立目前那一頁：每一列都佔 LVGL 記憶體，兩頁一起放不下，切換時整頁重建。
  */
 
@@ -400,6 +400,11 @@ static void tab_action(int mode)
     ui_list_scroll_page(self->list);
 }
 
+static void tab_scroll(int mode, int dir)
+{
+    ui_list_scroll(self->list, dir);
+}
+
 static void app_system_init(void *scr)
 {
     ui_screen_init(scr);
@@ -408,7 +413,7 @@ static void app_system_init(void *scr)
     static const char *const names[] = {"SYSTEM", "WI-FI"};
     static const ui_tabs_cfg_t tabs = {
         .names = names, .count = ARRAY_SIZE(names), .accent = SYSTEM_ACCENT_COLOR,
-        .pref_key = "system/mode", .show = tab_show, .action = tab_action,
+        .pref_key = "system/mode", .show = tab_show, .action = tab_action, .scroll = tab_scroll,
     };
     ui_tabs_create(scr, &tabs);
 }

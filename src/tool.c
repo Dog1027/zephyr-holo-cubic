@@ -84,6 +84,26 @@ static int _ui_tap(const struct shell *shell, size_t argc, char **argv)
     return nav_send(NAV_TAP);
 }
 
+static int _ui_up(const struct shell *shell, size_t argc, char **argv)
+{
+    return nav_send(NAV_UP);
+}
+
+static int _ui_down(const struct shell *shell, size_t argc, char **argv)
+{
+    return nav_send(NAV_DOWN);
+}
+
+static int _ui_left(const struct shell *shell, size_t argc, char **argv)
+{
+    return nav_send(NAV_LEFT);
+}
+
+static int _ui_right(const struct shell *shell, size_t argc, char **argv)
+{
+    return nav_send(NAV_RIGHT);
+}
+
 #define REMOTE_ESC_TIMEOUT_MS 50
 
 // 遙控模式的跳脫序列狀態 0: 一般, 1: 收到 ESC, 2: 收到 ESC [ (方向鍵)
@@ -117,11 +137,17 @@ static void remote_bypass(const struct shell *shell, uint8_t *data, size_t len, 
         }
         else if (atomic_get(&esc_state) == 2) {
             atomic_set(&esc_state, 0);
-            if (c == 'A' || c == 'D') {
-                nav_send(NAV_PREV);
+            if (c == 'A') {
+                nav_send(NAV_UP);
             }
-            else if (c == 'B' || c == 'C') {
-                nav_send(NAV_NEXT);
+            else if (c == 'B') {
+                nav_send(NAV_DOWN);
+            }
+            else if (c == 'C') {
+                nav_send(NAV_RIGHT);
+            }
+            else if (c == 'D') {
+                nav_send(NAV_LEFT);
             }
             continue;
         }
@@ -135,12 +161,16 @@ static void remote_bypass(const struct shell *shell, uint8_t *data, size_t len, 
             nav_send(NAV_OK);
             break;
         case 'w':
+            nav_send(NAV_UP);
+            break;
         case 'a':
-            nav_send(NAV_PREV);
+            nav_send(NAV_LEFT);
             break;
         case 's':
+            nav_send(NAV_DOWN);
+            break;
         case 'd':
-            nav_send(NAV_NEXT);
+            nav_send(NAV_RIGHT);
             break;
         case 'e':
             nav_send(NAV_TAP);
@@ -181,6 +211,10 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_ui,
     SHELL_CMD_ARG(ok, NULL, "Select the highlighted item", _ui_ok, 1, 0),
     SHELL_CMD_ARG(back, NULL, "Close the foreground app", _ui_back, 1, 0),
     SHELL_CMD_ARG(tap, NULL, "Same as tapping the cube", _ui_tap, 1, 0),
+    SHELL_CMD_ARG(up, NULL, "Up (prev unless the app uses it)", _ui_up, 1, 0),
+    SHELL_CMD_ARG(down, NULL, "Down (next unless the app uses it)", _ui_down, 1, 0),
+    SHELL_CMD_ARG(left, NULL, "Left (prev unless the app uses it)", _ui_left, 1, 0),
+    SHELL_CMD_ARG(right, NULL, "Right (next unless the app uses it)", _ui_right, 1, 0),
     SHELL_CMD_ARG(remote, NULL, "Control with single key presses", _ui_remote, 1, 0),
     SHELL_SUBCMD_SET_END);
 

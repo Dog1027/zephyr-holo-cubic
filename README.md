@@ -64,6 +64,7 @@ just test-share # 實機測試 Share（需要 Wi-Fi）
 ```
 app list / app open Photos / app close
 ui next / ui prev / ui ok / ui back / ui tap
+ui up / ui down / ui left / ui right    app 沒用到方向時，上左等於 prev、下右等於 next
 ui remote             遙控模式：方向鍵或 wasd、Enter、e（敲一下）、q（返回）、Ctrl+C 離開
 wlan set SSID [PSK]   設定 Wi-Fi 並連線
 wlan status / wlan scan / wlan forget

@@ -62,14 +62,26 @@ static void clicked_cb(lv_event_t *e)
     state.cfg->action((int)(intptr_t)lv_event_get_user_data(e));
 }
 
-// 敲一下跟 OK 一樣；next / prev / OK 照預設在分頁籤之間移動、點目前那個
+// 敲一下跟 OK 一樣；上下捲動頁面。next / prev / OK 照預設在分頁籤之間移動、點目前那個，
+// 左右沒處理會變成 prev / next，也就是切分頁
 static bool nav_cb(nav_cmd_t cmd)
 {
-    if (cmd != NAV_TAP || state.cfg == NULL) {
+    if (state.cfg == NULL) {
         return false;
     }
-    state.cfg->action(state.current);
-    return true;
+    switch (cmd) {
+    case NAV_TAP:
+        state.cfg->action(state.current);
+        return true;
+    case NAV_UP:
+    case NAV_DOWN:
+        if (state.cfg->scroll != NULL) {
+            state.cfg->scroll(state.current, cmd == NAV_UP ? -1 : 1);
+        }
+        return true;
+    default:
+        return false;
+    }
 }
 
 static void delete_cb(lv_event_t *e)

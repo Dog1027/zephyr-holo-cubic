@@ -66,7 +66,7 @@ plan = [
     ("Dice", ["ui tap", "ui next", "ui ok", "ui prev"]),
     ("Light", ["ui next", "ui next", "ui prev"]),
     ("Timer", ["ui next", "ui next"]),
-    ("System", ["ui next", "ui next", "ui tap", "ui next", "ui ok", "ui tap"]),
+    ("System", ["ui down", "ui up", "ui tap", "ui right", "ui ok", "ui left"]),
     ("Share", ["ui next"]),
     ("Cast", []),
     ("Aquarium", ["ui tap", "ui ok"]),

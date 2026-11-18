@@ -13,6 +13,13 @@ typedef enum {
     NAV_OK,     // click the highlighted object
     NAV_BACK,   // close the foreground app
     NAV_TAP,    // a tap on the cube: like NAV_NEXT inside an app unless it handles it, ignored in the menu
+    // Directions (serial remote's arrow keys). The handler sees them first; when it does not take
+    // one, it gets NAV_PREV (up, left) or NAV_NEXT (down, right) instead, so apps that only know
+    // next / prev keep working.
+    NAV_UP,
+    NAV_DOWN,
+    NAV_LEFT,
+    NAV_RIGHT,
 } nav_cmd_t;
 
 // Return true when the command was handled, false to fall back to the default action
