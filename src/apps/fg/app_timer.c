@@ -110,7 +110,7 @@ static void time_show(uint32_t ms, bool force)
 static void state_set(timer_state_t new_state)
 {
     static const char *const text[] = {
-        [STATE_SET] = "Next / prev to pick, OK to start",
+        [STATE_SET] = "Up / down to pick, OK to start",
         [STATE_RUNNING] = "OK, tap or face down to pause",
         [STATE_PAUSED] = "Paused, OK or tap to resume",
         [STATE_DONE] = "Done! OK or tap to reset",
@@ -190,13 +190,18 @@ static void tap_cb(lv_event_t *e)
     }
 }
 
-// 計時中敲一下等於 OK (暫停 / 繼續 / 重設)；選分鐘時敲一下照預設換下一個
+// 敲一下一律等於 OK：選分鐘時開始，計時中暫停 / 繼續 / 重設
 static bool nav_cb(nav_cmd_t cmd)
 {
-    if (cmd != NAV_TAP || state == STATE_SET) {
+    if (cmd != NAV_TAP) {
         return false;
     }
-    tap_cb(NULL);
+    if (state == STATE_SET) {
+        state_set(STATE_RUNNING);
+    }
+    else {
+        tap_cb(NULL);
+    }
     return true;
 }
 

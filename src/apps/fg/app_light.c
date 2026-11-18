@@ -1,6 +1,7 @@
 #include "fg_app.h"
 #include "ui.h"
 #include "led.h"
+#include "nav.h"
 #include <math.h>
 
 #define LIGHT_RING_RADIUS   98
@@ -88,6 +89,18 @@ static void dot_clicked_cb(lv_event_t *e)
     preview_show(index);
 }
 
+// 敲一下：直接換到下一個顏色並套用，不接電腦也能換燈色（上下只是預覽，OK 才套用）
+static bool nav_cb(nav_cmd_t cmd)
+{
+    if (cmd != NAV_TAP) {
+        return false;
+    }
+    int next = (self->saved + 1) % (int)ARRAY_SIZE(colors);
+    lv_group_focus_obj(self->dots[next]);
+    lv_obj_send_event(self->dots[next], LV_EVENT_CLICKED, NULL);
+    return true;
+}
+
 static void app_light_init(void *scr)
 {
     styles_init();
@@ -141,6 +154,7 @@ static void app_light_init(void *scr)
         lv_group_add_obj(lv_group_get_default(), self->dots[i]);
     }
     lv_group_focus_obj(self->dots[self->saved]);
+    nav_set_handler(nav_cb);
 }
 
 static void app_light_run(void *scr)
