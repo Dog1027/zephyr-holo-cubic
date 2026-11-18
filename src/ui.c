@@ -108,9 +108,11 @@ lv_obj_t *ui_list_item(lv_obj_t *list, const char *icon, const char *text, const
     lv_obj_t *label = lv_label_create(item);
     lv_label_set_text(label, icon);
 
+    // 固定一行高，太長就在最後變成 "..."，不會換行
     label = lv_label_create(item);
     lv_label_set_text(label, text);
     lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
+    lv_obj_set_height(label, lv_font_get_line_height(&lv_font_montserrat_18));
     lv_obj_set_flex_grow(label, 1);
 
     if (detail != NULL) {
