@@ -4,8 +4,8 @@
 #include "theme.h"
 
 #define UI_SCREEN_SIZE  240
-#define UI_TABS_Y       12      // ui_tabs() row: from here
-#define UI_TABS_BOTTOM  40      // to here, put the content below
+#define UI_LIST_TOP     36      // ui_list_create() starts here, below ui_title()
+#define UI_LIST_ROW_HEIGHT  34
 
 // Black background, no scrolling
 void ui_screen_init(lv_obj_t *scr);
@@ -16,7 +16,7 @@ lv_obj_t *ui_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color);
 // printf into a label, only when the text changes (setting the same text redraws it anyway)
 void ui_label_set_fmt(lv_obj_t *label, const char *fmt, ...);
 
-// Small grey title at the top of the screen
+// Title at the top of the screen (white, 18 px: anything smaller is hard to read through the prism)
 lv_obj_t *ui_title(lv_obj_t *scr, const char *text);
 
 // Vertical list below the title, items scroll into view when highlighted
@@ -38,18 +38,6 @@ const char *ui_obj_strdup(lv_obj_t *obj, const char *text);
 // Grey centered text inside a list, e.g. "Empty folder"
 lv_obj_t *ui_list_message(lv_obj_t *list, const char *text);
 
-// Mode tabs at the top of an app with several modes (Dice, Clock). next / prev move between them,
-// OK clicks the highlighted one. Both callbacks get the tab's index as user data
-// (lv_event_get_user_data). Adding the first tab to the group focuses it, so focused_cb runs
-// for tab 0 inside this call: create what it shows first. Tab i is lv_obj_get_child(tabs, i).
-// With focused_cb NULL the tabs only show the mode and stay out of the group, for apps whose
-// next / prev move inside a list (System): switch them with ui_tabs_select().
-lv_obj_t *ui_tabs(lv_obj_t *scr, const char *const names[], int count, lv_color_t accent,
-                  lv_event_cb_t focused_cb, lv_event_cb_t clicked_cb);
-
-// Highlight tab index of display-only tabs
-void ui_tabs_select(lv_obj_t *tabs, int index);
-
 // Invisible full screen object in the default group, receives OK (ui ok) when nothing else is selectable
 lv_obj_t *ui_tap_area(lv_obj_t *scr, lv_event_cb_t cb, void *user_data);
 
@@ -58,3 +46,10 @@ void ui_group_solo(lv_obj_t *obj);
 
 // Put the clickable children of parent back into the default group
 void ui_group_add_children(lv_obj_t *parent);
+
+// Take the children of parent out of the default group, e.g. a list that only shows values in an
+// app whose next / prev switch tabs (ui_tabs.h)
+void ui_group_remove_children(lv_obj_t *parent);
+
+// Scroll a list down by one screen, back to the top after the end: the action of a list page
+void ui_list_scroll_page(lv_obj_t *list);

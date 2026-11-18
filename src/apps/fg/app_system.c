@@ -1,9 +1,8 @@
 #include "fg_app.h"
 #include "file.h"
 #include "ui.h"
-#include "nav.h"
+#include "ui_tabs.h"
 #include "input.h"
-#include "prefs.h"
 #include "wlan.h"
 #include <zephyr/kernel.h>
 #include <zephyr/fs/fs.h>
@@ -15,10 +14,10 @@
 #include <stdio.h>
 
 /*
- * 系統狀態，兩個分頁：
+ * 系統狀態，兩個分頁（ui_tabs.h）：
  *   SYSTEM：開機時間、heap、SD 卡、姿態、各 thread 的 stack 用量
- *   NETWORK：Wi-Fi 狀態、訊號強度曲線、掃描附近的網路
- * 兩頁都是清單，next / prev 在清單裡移動，所以敲一下才是切換分頁（分頁籤只顯示）。
+ *   WI-FI：連線狀態、訊號強度曲線、附近的網路（切到這頁時掃描）
+ * 兩頁都是只能看的清單，OK 或敲一下往下捲一頁，到底再回到最上面。
  * 只建立目前那一頁：每一列都佔 LVGL 記憶體，兩頁一起放不下，切換時整頁重建。
  */
 
@@ -37,7 +36,7 @@
 
 extern struct k_heap _system_heap;
 
-enum { MODE_SYSTEM, MODE_NETWORK, MODE_COUNT };
+enum { MODE_SYSTEM, MODE_WIFI, MODE_COUNT };
 
 enum {
     SYS_ROW_UPTIME,
@@ -76,17 +75,13 @@ typedef struct {
     lv_obj_t *chart;
     lv_chart_series_t *series;
     lv_obj_t *scan_detail;
-    bool pending_scan;
     bool scanning;
 } net_page_t;
 
 typedef struct {
     lv_obj_t *scr;
-    lv_obj_t *tabs;
     lv_obj_t *list;
     int mode;
-    int saved_mode;
-    bool pending_switch;
     int64_t last_refresh;
     union {                 // 只有目前那一頁的狀態，切換時清掉
         sys_page_t sys;
@@ -296,12 +291,8 @@ static void net_show_scan_result(void)
         p->scan_rows[i] = ui_list_item(self->list, LV_SYMBOL_WIFI, aps[i].ssid, detail,
                                        lv_color_hex(NET_ACCENT_COLOR));
     }
+    ui_group_remove_children(self->list);
     ui_label_set_fmt(p->scan_detail, "%d found", p->scan_row_count);
-}
-
-static void net_scan_cb(lv_event_t *e)
-{
-    self->page.net.pending_scan = true;
 }
 
 static lv_obj_t *net_chart_create(void)
@@ -347,27 +338,22 @@ static void net_create(void)
     p->rows[NET_ROW_GATEWAY] = row_create(LV_SYMBOL_UPLOAD, "Gateway", NET_ACCENT_COLOR);
     p->rows[NET_ROW_MAC] = row_create(LV_SYMBOL_SETTINGS, "MAC", NET_ACCENT_COLOR);
 
-    p->scan_detail = row_create(LV_SYMBOL_REFRESH, "Scan", NET_ACCENT_COLOR);
-    lv_obj_t *item = lv_obj_get_parent(p->scan_detail);
-    lv_obj_add_event_cb(item, net_scan_cb, LV_EVENT_CLICKED, NULL);
-    ui_label_set_fmt(p->scan_detail, "press OK");
+    // 附近的網路接在最後面
+    p->scan_detail = row_create(LV_SYMBOL_REFRESH, "Nearby", NET_ACCENT_COLOR);
+    int ret = wlan_scan();
+    if (ret == 0 || ret == -EBUSY) {
+        p->scanning = true;
+        ui_label_set_fmt(p->scan_detail, "Scanning");
+    }
+    else {
+        ui_label_set_fmt(p->scan_detail, "Failed (%d)", ret);
+    }
 }
 
 static void net_run(void)
 {
     net_page_t *p = &self->page.net;
 
-    if (p->pending_scan) {
-        p->pending_scan = false;
-        int ret = wlan_scan();
-        if (ret == 0 || ret == -EBUSY) {
-            p->scanning = true;
-            ui_label_set_fmt(p->scan_detail, "Scanning...");
-        }
-        else {
-            ui_label_set_fmt(p->scan_detail, "Failed (%d)", ret);
-        }
-    }
     if (p->scanning && !wlan_scan_busy()) {
         p->scanning = false;
         net_show_scan_result();
@@ -388,10 +374,9 @@ static void refresh(int64_t now)
 }
 
 // 刪掉目前的清單，建立 mode 那一頁
-static void page_show(int mode)
+static void tab_show(int mode)
 {
     self->mode = mode;
-    ui_tabs_select(self->tabs, mode);
     if (self->list != NULL) {
         lv_obj_delete(self->list);
     }
@@ -405,46 +390,34 @@ static void page_show(int mode)
     else {
         net_create();
     }
+    // 列只是顯示用，不能被 next / prev 選到（那是切換分頁）
+    ui_group_remove_children(self->list);
     refresh(k_uptime_get());
 }
 
-// 敲一下切換分頁；next / prev / OK 照常在清單裡用
-static bool nav_cb(nav_cmd_t cmd)
+static void tab_action(int mode)
 {
-    if (cmd != NAV_TAP) {
-        return false;
-    }
-    self->pending_switch = true;
-    return true;
+    ui_list_scroll_page(self->list);
 }
 
 static void app_system_init(void *scr)
 {
-    uint8_t saved;
-
     ui_screen_init(scr);
     self->scr = scr;
-    self->saved_mode = MODE_SYSTEM;
-    if (prefs_load("system/mode", &saved, sizeof(saved)) == sizeof(saved) && saved == MODE_NETWORK) {
-        self->saved_mode = MODE_NETWORK;
-    }
 
-    static const char *const names[] = {"SYSTEM", "NETWORK"};
-    self->tabs = ui_tabs(scr, names, ARRAY_SIZE(names), lv_color_hex(SYSTEM_ACCENT_COLOR), NULL, NULL);
-    page_show(self->saved_mode);
-    nav_set_handler(nav_cb);
+    static const char *const names[] = {"SYSTEM", "WI-FI"};
+    static const ui_tabs_cfg_t tabs = {
+        .names = names, .count = ARRAY_SIZE(names), .accent = SYSTEM_ACCENT_COLOR,
+        .pref_key = "system/mode", .show = tab_show, .action = tab_action,
+    };
+    ui_tabs_create(scr, &tabs);
 }
 
 static void app_system_run(void *scr)
 {
     int64_t now = k_uptime_get();
 
-    if (self->pending_switch) {
-        self->pending_switch = false;
-        page_show((self->mode + 1) % MODE_COUNT);
-        return;
-    }
-    if (self->mode == MODE_NETWORK) {
+    if (self->mode == MODE_WIFI) {
         net_run();
     }
     if (now - self->last_refresh >= (self->mode == MODE_SYSTEM ? SYS_REFRESH_MS : NET_REFRESH_MS)) {
@@ -454,8 +427,4 @@ static void app_system_run(void *scr)
 
 static void app_system_exit(void *scr)
 {
-    if (self->mode != self->saved_mode) {
-        uint8_t saved = self->mode;
-        prefs_save("system/mode", &saved, sizeof(saved));
-    }
 }

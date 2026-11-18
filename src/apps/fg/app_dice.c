@@ -1,7 +1,7 @@
 #include "fg_app.h"
 #include "ui.h"
 #include "led.h"
-#include "nav.h"
+#include "ui_tabs.h"
 #include "file.h"
 #include <zephyr/fs/fs.h>
 #include <zephyr/random/random.h>
@@ -12,6 +12,7 @@
 #define LOTS_MAX            32
 #define LOTS_LEN            40
 #define DICE_SIZE           110
+#define DICE_Y              (UI_TABS_BOTTOM / 2)    // 分頁籤下面那塊的中間
 #define DICE_PIP_SIZE       18
 #define DICE_PIP_OFFSET     30
 #define ROLL_MS             700   // 停止搖晃後再滾這麼久才停
@@ -98,7 +99,7 @@ static void roll_step(void)
     }
 }
 
-static void mode_set(int new_mode)
+static void tab_show(int new_mode)
 {
     self->mode = new_mode;
     if (self->rolling) {
@@ -117,13 +118,8 @@ static void mode_set(int new_mode)
     }
 }
 
-static void tab_focused_cb(lv_event_t *e)
-{
-    mode_set((int)(intptr_t)lv_event_get_user_data(e));
-}
-
-// 搖晃會連續觸發敲擊，每次都重新計時，停手後才停下來
-static void tab_clicked_cb(lv_event_t *e)
+// OK 或敲一下：擲。搖晃會連續觸發敲擊，每次都重新計時，停手後才停下來
+static void tab_action(int index)
 {
     if (self->mode == MODE_LOTS && self->lots_count == 0) {
         return;
@@ -132,16 +128,6 @@ static void tab_clicked_cb(lv_event_t *e)
     self->rolling = true;
     self->roll_end_ms = now + ROLL_MS;
     self->next_step_ms = now;
-}
-
-// 敲擊 / 搖晃是擲骰，不是切換分頁；next / prev 切分頁，ok 擲
-static bool nav_cb(nav_cmd_t cmd)
-{
-    if (cmd != NAV_TAP) {
-        return false;
-    }
-    tab_clicked_cb(NULL);
-    return true;
 }
 
 static void app_dice_init(void *scr)
@@ -155,7 +141,7 @@ static void app_dice_init(void *scr)
     lv_obj_set_style_radius(self->dice, 22, 0);
     lv_obj_set_style_bg_color(self->dice, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(self->dice, LV_OPA_COVER, 0);
-    lv_obj_align(self->dice, LV_ALIGN_CENTER, 0, 6);
+    lv_obj_align(self->dice, LV_ALIGN_CENTER, 0, DICE_Y);
     lv_obj_set_scrollable(self->dice, false);
     lv_obj_set_clickable(self->dice, false);
 
@@ -176,18 +162,15 @@ static void app_dice_init(void *scr)
     lv_label_set_long_mode(self->lot_label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(self->lot_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(self->lot_label, lv_color_hex(THEME_TEXT), 0);
-    lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, 6);
+    lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, DICE_Y);
 
-    lv_obj_t *hint = lv_label_create(scr);
-    lv_label_set_text(hint, "Tap or shake");
-    lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(hint, lv_color_hex(THEME_TEXT_DIM), 0);
-    lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -12);
-
-    // 第一個 tab 會馬上被 focus，觸發 mode_set，所以內容要先建好
+    // 建立時就會呼叫 tab_show，內容要先建好
     static const char *const names[] = {"DICE", "LOTS"};
-    ui_tabs(scr, names, ARRAY_SIZE(names), lv_color_hex(DICE_ACCENT_COLOR), tab_focused_cb, tab_clicked_cb);
-    nav_set_handler(nav_cb);
+    static const ui_tabs_cfg_t tabs = {
+        .names = names, .count = ARRAY_SIZE(names), .accent = DICE_ACCENT_COLOR,
+        .pref_key = "dice/mode", .show = tab_show, .action = tab_action,
+    };
+    ui_tabs_create(scr, &tabs);
 }
 
 static void app_dice_run(void *scr)

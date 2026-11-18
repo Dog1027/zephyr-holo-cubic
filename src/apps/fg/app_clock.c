@@ -1,32 +1,30 @@
 #include "fg_app.h"
 #include "ui.h"
-#include "nav.h"
+#include "ui_tabs.h"
 #include "prefs.h"
 #include "net_time.h"
 #include "wlan.h"
 #include "weather_page.h"
 
 /*
- * 時鐘和天氣，用上面的分頁籤切換（跟 Dice 一樣）。OK 或敲一下：時鐘切換 12 / 24 小時制，
- * 天氣馬上重抓。上次停在哪一頁會記住。
+ * 時鐘和今天的天氣，兩個分頁（ui_tabs.h）。OK 或敲一下：時鐘切換 12 / 24 小時制，天氣馬上重抓。
+ * 12 小時制沒有 AM / PM 字樣（小字透過稜鏡看不清楚），下午時時間換成 CLOCK_ACCENT_COLOR。
  */
 
 #define CLOCK_ACCENT_COLOR  THEME_CYAN
 #define CLOCK_ARC_SIZE      196
 #define CLOCK_ARC_Y         20  // 圓環中心比畫面中心低一點，上面讓給分頁籤
 #define CLOCK_ARC_WIDTH     6
-#define CLOCK_ARC_STEP_MS    50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
+#define CLOCK_ARC_STEP_MS   50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
 
-enum { MODE_CLOCK, MODE_WEATHER };
+enum { MODE_CLOCK, MODE_WEATHER, MODE_COUNT };
 
 typedef struct {
-    lv_obj_t *pages[2];     // 每個 mode 一個容器，只顯示目前那個
+    lv_obj_t *pages[MODE_COUNT];    // 每個分頁一個容器，只顯示目前那個
     int mode;
-    int saved_mode;
     weather_page_t weather;
     lv_obj_t *arc;
     lv_obj_t *time_label;
-    lv_obj_t *ampm_label;
     lv_obj_t *date_label;
     lv_obj_t *status_label;
     int64_t shown_key;  // 上次畫面對應的時間（秒），-1 表示要重畫
@@ -43,7 +41,7 @@ static void show_status(void)
     const char *text = wlan_is_online() ? "Syncing time..." : "Waiting for Wi-Fi";
 
     lv_label_set_text(self->time_label, "--:--");
-    lv_label_set_text(self->ampm_label, "");
+    lv_obj_set_style_text_color(self->time_label, lv_color_hex(THEME_TEXT), 0);
     lv_label_set_text(self->date_label, "");
     lv_label_set_text(self->status_label, text);
     lv_arc_set_value(self->arc, 0);
@@ -52,38 +50,29 @@ static void show_status(void)
 static void show_time(const struct tm *tm)
 {
     int hour = tm->tm_hour;
+    bool pm = !self->hour24 && hour >= 12;
 
     if (!self->hour24) {
-        lv_label_set_text(self->ampm_label, hour < 12 ? "AM" : "PM");
         hour = hour % 12 == 0 ? 12 : hour % 12;
     }
-    else {
-        lv_label_set_text(self->ampm_label, "");
-    }
     lv_label_set_text_fmt(self->time_label, "%02d:%02d", hour, tm->tm_min);
+    lv_obj_set_style_text_color(self->time_label, lv_color_hex(pm ? CLOCK_ACCENT_COLOR : THEME_TEXT), 0);
     lv_label_set_text_fmt(self->date_label, "%s  %d %s %d", net_time_wday_names[tm->tm_wday], tm->tm_mday,
                           net_time_month_names[tm->tm_mon], tm->tm_year + 1900);
     lv_label_set_text(self->status_label, "");
-    // AM / PM 跟在時間右下方，時間的寬度會變
-    lv_obj_align_to(self->ampm_label, self->time_label, LV_ALIGN_OUT_RIGHT_BOTTOM, 4, -8);
 }
 
-static void mode_set(int mode)
+static void tab_show(int mode)
 {
     self->mode = mode;
-    lv_obj_set_hidden(self->pages[MODE_CLOCK], mode != MODE_CLOCK);
-    lv_obj_set_hidden(self->pages[MODE_WEATHER], mode != MODE_WEATHER);
+    for (int i = 0; i < MODE_COUNT; i++) {
+        lv_obj_set_hidden(self->pages[i], i != mode);
+    }
 }
 
-static void tab_focused_cb(lv_event_t *e)
+static void tab_action(int mode)
 {
-    mode_set((int)(intptr_t)lv_event_get_user_data(e));
-}
-
-// OK（點目前的分頁籤）或敲一下
-static void tab_clicked_cb(lv_event_t *e)
-{
-    if (self->mode == MODE_WEATHER) {
+    if (mode == MODE_WEATHER) {
         weather_page_refresh();
         return;
     }
@@ -91,16 +80,6 @@ static void tab_clicked_cb(lv_event_t *e)
     uint8_t saved = self->hour24;
     prefs_save("clock/24h", &saved, sizeof(saved));
     self->shown_key = -1;
-}
-
-// 敲一下跟 OK 一樣，不是切換分頁
-static bool nav_cb(nav_cmd_t cmd)
-{
-    if (cmd != NAV_TAP) {
-        return false;
-    }
-    tab_clicked_cb(NULL);
-    return true;
 }
 
 static lv_obj_t *page_create(lv_obj_t *scr)
@@ -115,7 +94,6 @@ static lv_obj_t *page_create(lv_obj_t *scr)
 
 static void clock_page_create(lv_obj_t *scr)
 {
-
     // 秒數圓環：一分鐘走一圈，單位是 CLOCK_ARC_STEP_MS
     self->arc = lv_arc_create(scr);
     lv_obj_set_size(self->arc, CLOCK_ARC_SIZE, CLOCK_ARC_SIZE);
@@ -133,10 +111,9 @@ static void clock_page_create(lv_obj_t *scr)
 
     self->time_label = ui_label(scr, &lv_font_montserrat_48, THEME_TEXT);
     lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y - 10);
-    self->ampm_label = ui_label(scr, &lv_font_montserrat_14, CLOCK_ACCENT_COLOR);
-    self->date_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT_DIM);
+    self->date_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
-    self->status_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
+    self->status_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
 }
 
@@ -149,10 +126,6 @@ static void app_clock_init(void *scr)
     if (prefs_load("clock/24h", &saved, sizeof(saved)) == sizeof(saved)) {
         self->hour24 = saved != 0;
     }
-    self->saved_mode = MODE_CLOCK;
-    if (prefs_load("clock/mode", &saved, sizeof(saved)) == sizeof(saved) && saved == MODE_WEATHER) {
-        self->saved_mode = MODE_WEATHER;
-    }
     self->shown_key = -1;
     self->shown_arc = -1;
 
@@ -161,12 +134,13 @@ static void app_clock_init(void *scr)
     self->pages[MODE_WEATHER] = page_create(scr);
     weather_page_create(&self->weather, self->pages[MODE_WEATHER]);
 
-    // 第一個分頁籤會馬上被 focus，觸發 mode_set，所以內容要先建好
+    // 建立時就會呼叫 tab_show，內容要先建好
     static const char *const names[] = {"CLOCK", "WEATHER"};
-    lv_obj_t *tabs = ui_tabs(scr, names, ARRAY_SIZE(names), lv_color_hex(CLOCK_ACCENT_COLOR), tab_focused_cb,
-                             tab_clicked_cb);
-    lv_group_focus_obj(lv_obj_get_child(tabs, self->saved_mode));
-    nav_set_handler(nav_cb);
+    static const ui_tabs_cfg_t tabs = {
+        .names = names, .count = ARRAY_SIZE(names), .accent = CLOCK_ACCENT_COLOR,
+        .pref_key = "clock/mode", .show = tab_show, .action = tab_action,
+    };
+    ui_tabs_create(scr, &tabs);
 }
 
 static void clock_page_run(void)
@@ -211,8 +185,4 @@ static void app_clock_run(void *scr)
 
 static void app_clock_exit(void *scr)
 {
-    if (self->mode != self->saved_mode) {
-        uint8_t saved = self->mode;
-        prefs_save("clock/mode", &saved, sizeof(saved));
-    }
 }
