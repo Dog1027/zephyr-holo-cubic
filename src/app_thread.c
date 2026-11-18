@@ -40,6 +40,8 @@ static int _draw_fps(uint32_t sleep_ms)
 }
 #endif
 
+#define APP_THREAD_MIN_SLEEP_MS 5
+
 // 背景與前景各用一個 group，避免 highlight 到另一個畫面上的物件
 static void use_group(lv_group_t *g)
 {
@@ -144,6 +146,7 @@ static void app_thread_entry(void *arg1, void *arg2, void *arg3)
         if (sleep_ms == LV_NO_TIMER_READY) {
             sleep_ms = CONFIG_APP_THREAD_MAX_SLEEP_MS;
         }
-        k_msleep(sleep_ms);
+        // 畫不完時 lv_timer_handler 會回傳 0，至少睡一下，優先權較低的 shell 等 thread 才跑得到
+        k_msleep(MAX(sleep_ms, APP_THREAD_MIN_SLEEP_MS));
     }
 }

@@ -21,7 +21,7 @@
 #define AQUA_FOOD_LIFE_MS   8000    // 沉到底之後這麼久才消失
 #define AQUA_SMELL_PX       110.0f  // 微生物聞得到飼料的距離
 #define AQUA_EAT_PX         7.0f
-#define AQUA_STEP_MS        33      // 大約 30 fps
+#define AQUA_STEP_MS        100     // 10 fps：畫面變動的區域要送到螢幕，再快 app thread 就沒有空檔
 #define AQUA_SCREEN         ((float)UI_SCREEN_SIZE)
 #define AQUA_TAU            6.2831853f
 
