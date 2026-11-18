@@ -184,3 +184,39 @@ void ui_group_add_children(lv_obj_t *parent)
         }
     }
 }
+
+void ui_group_remove_children(lv_obj_t *parent)
+{
+    uint32_t count = lv_obj_get_child_count(parent);
+    for (uint32_t i = 0; i < count; i++) {
+        lv_obj_t *child = lv_obj_get_child(parent, i);
+        if (lv_obj_get_group(child) != NULL) {
+            lv_group_remove_obj(child);
+        }
+    }
+}
+
+lv_obj_t *ui_list_step(lv_obj_t *list, lv_obj_t *current, int dir)
+{
+    int32_t count = (int32_t)lv_obj_get_child_count(list);
+    int32_t start = current != NULL ? lv_obj_get_index(current) : (dir > 0 ? -1 : count);
+    lv_obj_t *next = NULL;
+
+    // 找下一個可以點的列（"Empty folder" 這類訊息跳過），到頭就停
+    for (int32_t i = start + dir; i >= 0 && i < count; i += dir) {
+        lv_obj_t *child = lv_obj_get_child(list, i);
+        if (lv_obj_is_clickable(child)) {
+            next = child;
+            break;
+        }
+    }
+    if (next == NULL) {
+        return current;
+    }
+    if (current != NULL) {
+        lv_obj_remove_state(current, LV_STATE_FOCUSED);
+    }
+    lv_obj_add_state(next, LV_STATE_FOCUSED);
+    lv_obj_scroll_to_view(next, LV_ANIM_ON);
+    return next;
+}

@@ -119,7 +119,7 @@ static void tab_show(int new_mode)
 }
 
 // OK 或敲一下：擲。搖晃會連續觸發敲擊，每次都重新計時，停手後才停下來
-static void tab_action(int index)
+static void tab_action(int index, bool tap)
 {
     if (self->mode == MODE_LOTS && self->lots_count == 0) {
         return;

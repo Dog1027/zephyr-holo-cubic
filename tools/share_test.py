@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test the Share app on the real device: reset, open Share, read the PIN from the log, then
+"""Test Share (the Files app's SHARE tab) on the real device: reset, open it, read the PIN from the log, then
 list / upload / download / mkdir / delete with curl and check the PIN rules.
 Note: it ends by pressing OK in the app, so the cube has a new PIN afterwards.
 
@@ -36,9 +36,14 @@ def read_for(s):
 def cmd(l,w):
     for ch in l+"\r": ser.write(ch.encode()); time.sleep(0.01)
     return read_for(w)
+# Share 是 Files 的 SHARE 分頁：打開 Files，記住的分頁不是 SHARE 就往右切，切到時 log 會印 PIN
+def open_share():
+    t=cmd("app open Files",2.5)
+    if not re.search(r"PIN \d{4}",t): t=cmd("ui right",1.5)
+    return re.search(r"PIN (\d{4})",t).group(1)
 ser.rts=True; time.sleep(0.1); ser.rts=False; boot=read_for(10)
 ip=re.search(r"online, IP (\S+)",boot).group(1)
-pin=re.search(r"PIN (\d{4})",cmd("app open Share",2.5)).group(1)
+pin=open_share()
 B=f"http://{ip}"; fails=[]
 def curl(*a, pin_=True, out=None):
     c=["curl","-sS","-m","40","-w","\n%{http_code} %{speed_download} %{speed_upload}"]+(["-b","pin="+pin] if pin_ else [])+(["-o",out] if out else [])+list(a)
@@ -81,7 +86,7 @@ c,b,*_=curl(B+"/?list"); check("locked after 5 wrong PINs (429 even with the rig
 read_for(31)
 c,b,*_=curl(B+"/?list"); check("unlocked after 30 s", c==200, c)
 cmd("app close",1.5)
-again=re.search(r"PIN (\d{4})",cmd("app open Share",2.5)).group(1); check("same PIN after reopening", again==pin, again)
+again=open_share(); check("same PIN after reopening", again==pin, again)
 new=re.search(r"PIN (\d{4})",cmd("ui ok",1.5)).group(1); check("OK makes a new PIN", new!=pin, new)
 c,b,*_=curl(B+"/?list"); check("old PIN no longer works", c==401, c)
 pin=new

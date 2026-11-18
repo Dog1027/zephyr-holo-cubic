@@ -13,7 +13,7 @@
 | App | 說明 |
 |---|---|
 | Clock | 網路對時的時鐘；WEATHER 分頁是目前天氣和三天預報（wttr.in） |
-| Files | 瀏覽 SD 卡 |
+| Files | FILES 分頁瀏覽 SD 卡（點檔案看大小）；SHARE 分頁是網頁版的檔案管理 |
 | Anim | 播放 `/anim/<名稱>/` 裡的 JPEG 序列 |
 | Photos | `/photo/` 裡的相片，可自動輪播 |
 | Level | 水平儀 |
@@ -21,7 +21,6 @@
 | Light | 用 RGB LED 當氣氛燈 |
 | Timer | 計時器，翻面朝下暫停 |
 | System | SYSTEM 分頁：heap、SD 卡、每個 thread 的 stack 用量；WI-FI 分頁：訊號強度、IP、附近的網路。一次顯示一項，上下換項目 |
-| Share | 網頁版的 SD 卡檔案管理 |
 | Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上 |
 | Aquarium | 水母和微生物，敲一下或 OK 撒飼料 |
 | Test | 空的 app，測試新功能用 |
@@ -52,7 +51,7 @@ just build      # 編譯
 just flash      # 燒錄
 just monitor    # 序列埠 console（Ctrl+] 離開）
 just test       # 重置後自動開關每個 app，回報錯誤和 stack 用量
-just test-share # 實機測試 Share（需要 Wi-Fi）
+just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
 ```
 
 燒錄和測試會用到序列埠，要先關掉 monitor。序列埠預設是 CP2102 的固定路徑，換埠用 `just port=/dev/ttyUSB0 flash`。
@@ -113,9 +112,9 @@ just gif2jpg cat.gif out/cat          # GIF 轉成動畫資料夾
 
 ### Share
 
-打開 Share，畫面會顯示網址和 4 位數 PIN。用瀏覽器打開網址、輸入 PIN，就能瀏覽、上傳、下載、刪除和建立資料夾。
+打開 Files 切到 SHARE 分頁，畫面會顯示網址和 4 位數 PIN（只有這一頁開著時才提供服務）。用瀏覽器打開網址、輸入 PIN，就能瀏覽、上傳、下載、刪除和建立資料夾。
 
-- PIN 是固定的，在 Share 裡按 OK 換一組。連錯幾次會暫時鎖住。
+- PIN 是固定的，在 SHARE 分頁按 OK 換一組（敲一下不會換）。連錯幾次會暫時鎖住。
 - 檔名只能用英數字、空白和 `._-+()`。
 - 一次只服務一個連線，速度是幾十 KB/s。
 - 有 PIN 的人可以上傳 `/config.txt` 改設定，所以只在信任的網路上打開。
@@ -177,7 +176,7 @@ static void app_uptime_exit(void *scr)
 - **狀態放在 `self_t`**，用 `self->` 存取，不要寫成 `static`。所有前景 app 共用同一塊記憶體，`init` 之前會清成 0，`exit` 之後不能再用。放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。只有離開 app 後還要保留的東西才用 `static`，並註明原因。
 - **會等待的工作不能放在 `run`**：DNS、HTTP 這類丟到 `net_job_queue()`，app 只讀結果。只在 app 開著時需要的 server 用 `net_server.h` 的 non-blocking socket。
 - **顏色用 `theme.h`**，不要寫色碼。**透過稜鏡看，小字和非白色的字都看不清楚**：要讀的文字一律 `THEME_TEXT`、至少 18 px（Montserrat 18 / 48），顏色只用在大字、色塊和反白。說明、單位這類小字寧可拿掉。
-- **有好幾頁的 app 用 `ui_tabs.h`**（Dice、Clock、System），操作才會一致：next / prev 切分頁，OK 和敲一下是目前分頁的動作。
+- **有好幾頁的 app 用 `ui_tabs.h`**（Dice、Clock、System、Files），操作才會一致：next / prev 切分頁，OK 和敲一下是目前分頁的動作。
 - **先找現成的**：`ui.h`（標籤、清單）、`nav.h`（自己處理 next / prev / ok / 敲擊）、`prefs.h`（重開機後保留的值）、`conf.h`（使用者設定）、`jpeg.h`（顯示 JPEG）、`led.h`、`file.h`。
 - **圖示**：在 `tools/mkicons.py` 的清單加一行後重新執行，用法在檔案開頭。
 

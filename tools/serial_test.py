@@ -59,7 +59,7 @@ cmd("app list", 1)
 # or starts Timer
 plan = [
     ("Clock", ["ui next", "ui ok", "ui prev"]),
-    ("Files", ["ui next", "ui next", "ui ok", "ui prev"]),
+    ("Files", ["ui down", "ui ok", "ui ok", "ui up", "ui right", "ui left"]),
     ("Anim", ["ui next", "ui ok"]),
     ("Photos", ["ui next", "ui tap", "ui prev"]),
     ("Level", ["ui next", "ui prev"]),
@@ -67,7 +67,6 @@ plan = [
     ("Light", ["ui next", "ui next", "ui prev"]),
     ("Timer", ["ui next", "ui next"]),
     ("System", ["ui down", "ui up", "ui tap", "ui right", "ui ok", "ui left"]),
-    ("Share", ["ui next"]),
     ("Cast", []),
     ("Aquarium", ["ui tap", "ui ok"]),
     ("Test", ["ui tap"]),

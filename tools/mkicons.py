@@ -25,7 +25,6 @@ ICONS = [
     ("LIGHT", "lightbulb-on", 0xF06E8),
     ("TIMER", "timer-outline", 0xF051B),
     ("SYSTEM", "memory", 0xF035B),
-    ("SHARE", "folder-network", 0xF0870),
     ("CAST", "cast", 0xF0118),
     ("AQUARIUM", "jellyfish", 0xF0F01),
     ("TEST", "flask", 0xF0093),

@@ -46,3 +46,12 @@ void ui_group_solo(lv_obj_t *obj);
 
 // Put the clickable children of parent back into the default group
 void ui_group_add_children(lv_obj_t *parent);
+
+// Take the children of parent out of the default group, e.g. a list on a page under ui_tabs
+// (the tabs own next / prev there)
+void ui_group_remove_children(lv_obj_t *parent);
+
+// For such a list: highlight the next (dir +1) or previous (-1) clickable row after current
+// (NULL: the first / last one) and scroll it into view. Stops at the ends. Returns the highlighted
+// row (current when there is none), send it LV_EVENT_CLICKED for OK.
+lv_obj_t *ui_list_step(lv_obj_t *list, lv_obj_t *current, int dir);

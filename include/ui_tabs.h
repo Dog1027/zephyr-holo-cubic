@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lvgl.h>
+#include <stdbool.h>
 
 /*
  * Mode tabs at the top of an app with several pages (Dice, Clock, System). Every app that uses
@@ -22,7 +23,7 @@ typedef struct {
     uint32_t accent;            // 0xRRGGBB of the current tab
     const char *pref_key;       // prefs key to remember the last tab, NULL to always open the first
     void (*show)(int index);    // tab index became current, also once at start: show its page
-    void (*action)(int index);  // OK or tap on tab index
+    void (*action)(int index, bool tap);    // OK (tap false) or a tap on the cube (tap true) on tab index
     void (*scroll)(int index, int dir); // up (dir -1) / down (+1) on tab index, NULL if the pages do not scroll
 } ui_tabs_cfg_t;
 

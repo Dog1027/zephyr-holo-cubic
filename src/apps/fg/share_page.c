@@ -1,10 +1,11 @@
-#include "fg_app.h"
+#include "share_page.h"
 #include "ui.h"
+#include "ui_tabs.h"
+#include <zephyr/logging/log.h>
 #include "led.h"
 #include "file.h"
 #include "wlan.h"
 #include "net_server.h"
-#include "nav.h"
 #include "prefs.h"
 #include "conf.h"
 #include "sdconf.h"
@@ -18,25 +19,23 @@
 #include <strings.h>
 
 /*
- * 網頁版的檔案管理：開著這個 app 時在 port 80 跑一個 HTTP server，管理 SD 卡上的檔案。
+ * 網頁版的檔案管理（Files app 的 SHARE 分頁）：分頁開著時在 port 80 跑一個 HTTP server，管理 SD 卡上的檔案。
  *   GET /                 檔案管理網頁（唯一不用 PIN 的）
  *   GET /<資料夾>/?list    資料夾內容，JSON：[{"n":"名稱","d":0 或 1,"s":大小}, ...]
  *   GET /<檔案>            下載
  *   PUT /<檔案>            上傳（POST 也可以），資料夾不存在就建立
  *   PUT /<資料夾>/         建立資料夾
  *   DELETE /<路徑>         刪除檔案或空的資料夾
- * 4 位數 PIN 顯示在螢幕上，存在 flash 所以每次都一樣（網頁用 session cookie 記到瀏覽器關掉為止），在 app 裡按 OK 換一組。
+ * 4 位數 PIN 顯示在螢幕上，存在 flash 所以每次都一樣（網頁用 session cookie 記到瀏覽器關掉為止），在分頁按 OK 換一組（敲一下不會）。
  * PIN 用 cookie "pin=1234"（網頁）、
  * header "X-Pin: 1234" 或 "?pin=1234" 帶上來；連錯 SHARE_PIN_TRIES 次鎖一段時間。
- * 一次服務一個連線（keep-alive），全部在 run() 裡做。
+ * 一次服務一個連線（keep-alive），全部在 share_page_run() 裡做。
  */
+
 
 #define SHARE_PORT          80
 #define SHARE_ACCENT_COLOR  THEME_GREEN
-#define SHARE_PATH_MAX      96
-#define SHARE_LINE_MAX      160     // 更長的 header 只看開頭，用不到的部分就丟掉
 #define SHARE_CHUNK         1024
-#define SHARE_NAME_MAX      100     // 列表裡更長的檔名不列出來
 #define SHARE_BUDGET_MS     20      // 沒在傳檔時，每次 run 最多花這麼久等資料
 #define SHARE_BODY_MS       150     // 傳檔中：TCP window 只有 3 KB，一直收送才不會讓對方停下來等
 #define SHARE_IDLE_MS       10000   // 連線這麼久沒動靜就關掉，讓下一個連線進來
@@ -46,74 +45,10 @@
 #define SHARE_PIN_TRIES     5
 #define SHARE_PIN_LOCK_MS   30000
 
-// ST_DRAIN：已經決定好錯誤回應，先把對方送來的 body 讀完丟掉再回（直接斷線的話對方會收到 RST，
-// 看不到錯誤訊息，而且主動斷線的連線要在 TIME_WAIT 佔著一個 socket）
-// ST_CLOSING：回應送完、這條連線不再用了，等對方先斷線（自己先關的話又是一個 TIME_WAIT）
-typedef enum { ST_HEADER, ST_BODY, ST_DRAIN, ST_SEND, ST_CLOSING } conn_state_t;
-typedef enum { REQ_OTHER, REQ_GET, REQ_PUT, REQ_DELETE } req_method_t;
-// 回應的內容：常數字串、檔案（下載）、邊讀資料夾邊產生的 JSON
-typedef enum { BODY_CONST, BODY_FILE, BODY_LIST } body_kind_t;
-typedef enum { FILE_CLOSED, FILE_UPLOAD, FILE_DOWNLOAD } file_mode_t;
+LOG_MODULE_REGISTER(Share, CONFIG_CUBE_LOG_LEVEL);
 
-typedef struct {
-    lv_obj_t *url_label;
-    lv_obj_t *pin_label;
-    lv_obj_t *status_label;
-    lv_obj_t *file_label;
-    lv_obj_t *bar;
-
-    int listen_fd;
-    int fd;
-    conn_state_t state;
-    int64_t last_activity;
-    bool online;
-
-    int pin;
-    int pin_fails;
-    int64_t pin_lock_until;
-
-    // request
-    char line[SHARE_LINE_MAX];
-    size_t line_len;
-    bool first_line;
-    req_method_t method;
-    bool bad_path;
-    bool dir_slash;                 // 路徑用 '/' 結尾
-    bool want_list;                 // ?list
-    bool pin_given;
-    bool pin_ok;
-    bool has_length;
-    bool expect_continue;
-    bool keep_alive;
-    char path[SHARE_PATH_MAX];      // 相對 FILE_ROOT，頭尾都沒有 '/'
-    uint32_t body_len;
-    uint32_t body_done;
-    struct fs_file_t file;
-    file_mode_t file_mode;
-
-    // response：header（和 BODY_LIST 的每一塊）寫在 out
-    char out[2 * SHARE_NAME_MAX + 64];
-    size_t out_len;
-    size_t out_sent;
-    body_kind_t body_kind;
-    const char *body;               // BODY_CONST
-    size_t body_out_len;
-    size_t body_sent;
-    uint32_t file_size;             // BODY_FILE
-    uint32_t file_left;
-    struct fs_dir_t dir;            // BODY_LIST
-    bool dir_open;
-    bool list_first;
-    bool list_done;
-    bool close_after;
-
-    int uploads;
-    int downloads;
-    int64_t last_ui;
-    bool ui_dirty;
-} self_t;
-
-APP_FG_REGISTER(Share, ICON_SHARE, app_share_init, app_share_run, app_share_exit, 15, self_t);
+// 目前的狀態，在 share_page_create() 設定（放在 Files 的 self_t 裡）
+static share_page_t *self;
 
 static const char page[] =
     "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
@@ -950,20 +885,16 @@ static void pin_show(void)
     LOG_INF("PIN %04d", self->pin);
 }
 
-static bool nav_cb(nav_cmd_t cmd)
+void share_page_new_pin(void)
 {
-    if (cmd != NAV_OK) {
-        return false;
-    }
     pin_new();
     pin_show();
     ui_status("New PIN");
-    return true;
 }
 
-static void app_share_init(void *scr)
+void share_page_create(share_page_t *state, lv_obj_t *scr)
 {
-    ui_screen_init(scr);
+    self = state;
     self->listen_fd = -1;
     self->fd = -1;
     if (prefs_load(SHARE_PIN_KEY, &self->pin, sizeof(self->pin)) != sizeof(self->pin) || self->pin < 0 ||
@@ -977,7 +908,7 @@ static void app_share_init(void *scr)
     self->pin_label = ui_label(scr, &lv_font_montserrat_48, SHARE_ACCENT_COLOR);
     lv_obj_set_style_text_letter_space(self->pin_label, 4, 0);
     lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, -22);
-    pin_show();
+    ui_label_set_fmt(self->pin_label, "%04d", self->pin);
 
     self->status_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 20);
@@ -995,12 +926,18 @@ static void app_share_init(void *scr)
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(SHARE_ACCENT_COLOR), LV_PART_INDICATOR);
 
     self->online = wlan_is_online();
-    listen_update(self->online);
     ui_update();
-    nav_set_handler(nav_cb);
 }
 
-static void app_share_run(void *scr)
+void share_page_start(void)
+{
+    pin_show();
+    self->online = wlan_is_online();
+    listen_update(self->online);
+    ui_status(self->online ? "" : "Waiting for Wi-Fi");
+}
+
+void share_page_run(void)
 {
     int64_t now = k_uptime_get();
     bool online = wlan_is_online();
@@ -1037,10 +974,11 @@ static void app_share_run(void *scr)
     }
 }
 
-static void app_share_exit(void *scr)
+void share_page_stop(void)
 {
     conn_close();
     if (self->listen_fd >= 0) {
         zsock_close(self->listen_fd);
+        self->listen_fd = -1;
     }
 }

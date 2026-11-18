@@ -460,7 +460,7 @@ static void tab_show(int mode)
     self->last_refresh = k_uptime_get();
 }
 
-static void tab_action(int mode)
+static void tab_action(int mode, bool tap)
 {
     ui_wheel_move(&self->wheel, 1);
 }

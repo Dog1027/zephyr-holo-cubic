@@ -59,7 +59,7 @@ static void focused_cb(lv_event_t *e)
 
 static void clicked_cb(lv_event_t *e)
 {
-    state.cfg->action((int)(intptr_t)lv_event_get_user_data(e));
+    state.cfg->action((int)(intptr_t)lv_event_get_user_data(e), false);
 }
 
 // 敲一下跟 OK 一樣；上下捲動頁面。next / prev / OK 照預設在分頁籤之間移動、點目前那個，
@@ -71,7 +71,7 @@ static bool nav_cb(nav_cmd_t cmd)
     }
     switch (cmd) {
     case NAV_TAP:
-        state.cfg->action(state.current);
+        state.cfg->action(state.current, true);
         return true;
     case NAV_UP:
     case NAV_DOWN:

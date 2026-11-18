@@ -70,7 +70,7 @@ static void tab_show(int mode)
     }
 }
 
-static void tab_action(int mode)
+static void tab_action(int mode, bool tap)
 {
     if (mode == MODE_WEATHER) {
         weather_page_refresh();
