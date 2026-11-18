@@ -10,7 +10,7 @@
  *   OK, tap                     the current page's action (roll the dice, refresh the weather...)
  * The last tab is remembered when pref_key is set. The tabs take the app's nav handler, so do
  * not call nav_set_handler() as well. Only the tabs are in the default group: a page must not
- * add its own objects (ui_group_remove_children() after building a list).
+ * add its own objects (for read-only lists use ui_wheel.h).
  */
 
 #define UI_TABS_Y       12      // the tab row: from here

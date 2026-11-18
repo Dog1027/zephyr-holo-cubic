@@ -19,6 +19,7 @@ target_sources(app PRIVATE
   src/input.c
   src/ui.c
   src/ui_tabs.c
+  src/ui_wheel.c
   src/icons.c
   src/jpeg.c
   src/led.c

@@ -46,13 +46,3 @@ void ui_group_solo(lv_obj_t *obj);
 
 // Put the clickable children of parent back into the default group
 void ui_group_add_children(lv_obj_t *parent);
-
-// Take the children of parent out of the default group, e.g. a list that only shows values in an
-// app whose next / prev switch tabs (ui_tabs.h)
-void ui_group_remove_children(lv_obj_t *parent);
-
-// Scroll a list down by one screen, back to the top after the end: the action of a list page
-void ui_list_scroll_page(lv_obj_t *list);
-
-// Scroll a list one screen up (dir -1) or down (+1), stopping at the ends
-void ui_list_scroll(lv_obj_t *list, int dir);

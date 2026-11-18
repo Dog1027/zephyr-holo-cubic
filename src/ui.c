@@ -182,30 +182,3 @@ void ui_group_add_children(lv_obj_t *parent)
         }
     }
 }
-
-void ui_group_remove_children(lv_obj_t *parent)
-{
-    uint32_t count = lv_obj_get_child_count(parent);
-    for (uint32_t i = 0; i < count; i++) {
-        lv_obj_t *child = lv_obj_get_child(parent, i);
-        if (lv_obj_get_group(child) != NULL) {
-            lv_group_remove_obj(child);
-        }
-    }
-}
-
-void ui_list_scroll(lv_obj_t *list, int dir)
-{
-    // 留一列重疊，看得出接在哪裡
-    int32_t step = lv_obj_get_height(list) - UI_LIST_ROW_HEIGHT;
-    lv_obj_scroll_by_bounded(list, 0, dir > 0 ? -step : step, LV_ANIM_ON);
-}
-
-void ui_list_scroll_page(lv_obj_t *list)
-{
-    if (lv_obj_get_scroll_bottom(list) <= 0) {
-        lv_obj_scroll_to_y(list, 0, LV_ANIM_ON);
-        return;
-    }
-    ui_list_scroll(list, 1);
-}

@@ -2,6 +2,7 @@
 #include "file.h"
 #include "ui.h"
 #include "ui_tabs.h"
+#include "ui_wheel.h"
 #include "input.h"
 #include "wlan.h"
 #include <zephyr/kernel.h>
@@ -15,22 +16,24 @@
 
 /*
  * 系統狀態，兩個分頁（ui_tabs.h）：
- *   SYSTEM：開機時間、heap、SD 卡、姿態、各 thread 的 stack 用量
- *   WI-FI：連線狀態、訊號強度曲線、附近的網路（切到這頁時掃描）
- * 兩頁都是只能看的清單：上下捲動，OK 或敲一下往下捲一頁、到底再回到最上面。
- * 只建立目前那一頁：每一列都佔 LVGL 記憶體，兩頁一起放不下，切換時整頁重建。
+ *   SYSTEM：開機時間、heap、SD 卡、姿態、每個 thread 的 stack 用量、板子和 Zephyr 版本
+ *   WI-FI：連線狀態、訊號強度（含一分鐘的曲線）、位址、附近的網路（切到這頁時掃描）
+ * 一次顯示一項（ui_wheel.h），數值用大字：上下換項目，OK 或敲一下看下一項。
+ * 切換分頁時整頁重建。
  */
 
 #define SYSTEM_ACCENT_COLOR     THEME_PURPLE
 #define SYS_REFRESH_MS          500
 #define SYS_SD_REFRESH_MS       5000
 #define SYS_SD_PATH             FILE_ROOT
-#define SYS_MAX_THREADS         12  // 每列都佔 LVGL 記憶體，總列數控制在 ~20
+#define SYS_MAX_THREADS         16
 
 #define NET_ACCENT_COLOR        THEME_BLUE
 #define NET_REFRESH_MS          1000
 #define NET_CHART_POINTS        60      // 每秒一點，一分鐘
-#define NET_CHART_HEIGHT        56
+#define NET_CHART_WIDTH         200
+#define NET_CHART_HEIGHT        40
+#define NET_CHART_Y             66      // 在 ui_wheel 中間那一項裡的位置，數值下面
 #define NET_RSSI_MIN            (-100)
 #define NET_RSSI_MAX            (-20)
 
@@ -38,68 +41,73 @@ extern struct k_heap _system_heap;
 
 enum { MODE_SYSTEM, MODE_WIFI, MODE_COUNT };
 
+// SYSTEM 的項目：固定的幾項，接著每個 thread 一項，最後是板子和版本
 enum {
-    SYS_ROW_UPTIME,
-    SYS_ROW_SYS_HEAP,
-    SYS_ROW_LVGL_HEAP,
-    SYS_ROW_SD,
-    SYS_ROW_ROLL,
-    SYS_ROW_PITCH,
-    SYS_ROW_COUNT,
+    SYS_UPTIME,
+    SYS_SYS_HEAP,
+    SYS_LVGL_HEAP,
+    SYS_SD,
+    SYS_ROLL,
+    SYS_PITCH,
+    SYS_FIXED_COUNT,
 };
+#define SYS_TAIL_COUNT  2   // Board, Zephyr
 
+// WI-FI 的項目：固定的幾項，接著每個掃到的網路一項
 enum {
-    NET_ROW_STATUS,
-    NET_ROW_SSID,
-    NET_ROW_SIGNAL,
-    NET_ROW_CHANNEL,
-    NET_ROW_IP,
-    NET_ROW_NETMASK,
-    NET_ROW_GATEWAY,
-    NET_ROW_MAC,
-    NET_ROW_COUNT,
+    NET_STATUS,
+    NET_SSID,
+    NET_SIGNAL,
+    NET_CHANNEL,
+    NET_IP,
+    NET_NETMASK,
+    NET_GATEWAY,
+    NET_MAC,
+    NET_NEARBY,
+    NET_FIXED_COUNT,
 };
 
 typedef struct {
-    lv_obj_t *rows[SYS_ROW_COUNT];          // 每一列右邊的值
-    lv_obj_t *thread_rows[SYS_MAX_THREADS];
     k_tid_t threads[SYS_MAX_THREADS];
     int thread_count;
+    uint32_t sd_used_mb;
+    uint32_t sd_total_mb;   // 0 表示沒有卡
     int64_t last_sd_refresh;
 } sys_page_t;
 
 typedef struct {
-    lv_obj_t *rows[NET_ROW_COUNT];          // 每一列右邊的值
-    lv_obj_t *scan_rows[WLAN_SCAN_MAX];
-    int scan_row_count;
+    wlan_info_t info;
+    wlan_ap_t aps[WLAN_SCAN_MAX];
+    int ap_count;
+    bool scanning;
+    int scan_error;
     lv_obj_t *chart;
     lv_chart_series_t *series;
-    lv_obj_t *scan_detail;
-    bool scanning;
 } net_page_t;
 
 typedef struct {
     lv_obj_t *scr;
-    lv_obj_t *list;
+    lv_obj_t *page;         // 目前分頁的容器，切換時整個刪掉
+    ui_wheel_t wheel;
     int mode;
     int64_t last_refresh;
     union {                 // 只有目前那一頁的狀態，切換時清掉
         sys_page_t sys;
         net_page_t net;
-    } page;
+    } state;
 } self_t;
 
 APP_FG_REGISTER(System, ICON_SYSTEM, app_system_init, app_system_run, app_system_exit, 13, self_t);
 
-static lv_obj_t *row_create(const char *icon, const char *name, uint32_t accent)
+static int percent_of(uint64_t part, uint64_t total)
 {
-    return ui_list_row(self->list, icon, name, lv_color_hex(accent));
+    return total > 0 ? (int)(part * 100 / total) : 0;
 }
 
 /* ---------- SYSTEM ---------- */
 
 // 角度轉成一位小數的字串，不用 %f (picolibc 可能沒有浮點 printf)
-static void row_set_angle(lv_obj_t *row, float deg)
+static void angle_format(char *buf, size_t len, float deg)
 {
     int tenths = (int)(deg * 10.0f + (deg < 0 ? -0.5f : 0.5f));
     const char *sign = tenths < 0 ? "-" : "";
@@ -107,129 +115,148 @@ static void row_set_angle(lv_obj_t *row, float deg)
     if (tenths < 0) {
         tenths = -tenths;
     }
-    ui_label_set_fmt(row, "%s%d.%d deg", sign, tenths / 10, tenths % 10);
+    snprintf(buf, len, "%s%d.%d°", sign, tenths / 10, tenths % 10);
 }
 
-static void thread_collect_cb(const struct k_thread *thread, void *user_data)
+static void heap_item(ui_wheel_item_t *item, const struct sys_memory_stats *stats)
 {
-    sys_page_t *p = &self->page.sys;
+    size_t total = stats->allocated_bytes + stats->free_bytes;
 
-    if (p->thread_count < SYS_MAX_THREADS) {
-        p->threads[p->thread_count++] = (k_tid_t)thread;
-    }
+    snprintf(item->value, sizeof(item->value), "%u / %u KB", (unsigned int)((stats->allocated_bytes + 1023) / 1024),
+             (unsigned int)(total / 1024));
+    item->percent = percent_of(stats->allocated_bytes, total);
 }
 
-static void sys_update_uptime(lv_obj_t *row)
+static void uptime_format(char *buf, size_t len)
 {
     uint32_t sec = (uint32_t)(k_uptime_get() / 1000);
     uint32_t days = sec / 86400;
 
     sec %= 86400;
     if (days > 0) {
-        ui_label_set_fmt(row, "%ud %02u:%02u:%02u", (unsigned int)days, (unsigned int)(sec / 3600),
-                         (unsigned int)(sec / 60 % 60), (unsigned int)(sec % 60));
+        snprintf(buf, len, "%ud %02u:%02u:%02u", (unsigned int)days, (unsigned int)(sec / 3600),
+                 (unsigned int)(sec / 60 % 60), (unsigned int)(sec % 60));
     }
     else {
-        ui_label_set_fmt(row, "%u:%02u:%02u", (unsigned int)(sec / 3600), (unsigned int)(sec / 60 % 60),
-                         (unsigned int)(sec % 60));
+        snprintf(buf, len, "%u:%02u:%02u", (unsigned int)(sec / 3600), (unsigned int)(sec / 60 % 60),
+                 (unsigned int)(sec % 60));
     }
 }
 
-static void sys_update_heap(lv_obj_t *row, const struct sys_memory_stats *stats)
+static void thread_item(k_tid_t thread, ui_wheel_item_t *item, bool name_only)
 {
-    size_t total = stats->allocated_bytes + stats->free_bytes;
+    const char *name = k_thread_name_get(thread);
+    size_t unused;
 
-    ui_label_set_fmt(row, "%u / %u KB", (unsigned int)((stats->allocated_bytes + 1023) / 1024),
-                     (unsigned int)(total / 1024));
+    if (name != NULL && name[0] != '\0') {
+        snprintf(item->name, sizeof(item->name), "%s", name);
+    }
+    else {
+        snprintf(item->name, sizeof(item->name), "%p", (void *)thread);
+    }
+    if (name_only) {
+        return;
+    }
+    // 執行緒結束後 stack 可能已無效，查詢失敗就顯示 "-"
+    if (k_thread_stack_space_get(thread, &unused) != 0) {
+        snprintf(item->value, sizeof(item->value), "-");
+        return;
+    }
+    size_t size = thread->stack_info.size;
+    snprintf(item->value, sizeof(item->value), "%u / %u", (unsigned int)(size - unused), (unsigned int)size);
+    item->percent = percent_of(size - unused, size);
 }
 
-static void sys_update_sd(lv_obj_t *row)
+static void sys_get(int index, ui_wheel_item_t *item, bool name_only)
 {
-    struct fs_statvfs st;
+    sys_page_t *p = &self->state.sys;
+    struct sys_memory_stats stats;
+    input_angle_t angle;
+    static const char *const names[SYS_FIXED_COUNT] = {
+        "Uptime", "Sys heap", "LVGL heap", "SD card", "Roll", "Pitch",
+    };
 
-    if (fs_statvfs(SYS_SD_PATH, &st) < 0 || st.f_blocks == 0) {
-        ui_label_set_fmt(row, "No card");
+    if (index >= SYS_FIXED_COUNT && index < SYS_FIXED_COUNT + p->thread_count) {
+        thread_item(p->threads[index - SYS_FIXED_COUNT], item, name_only);
+        return;
+    }
+    if (index >= SYS_FIXED_COUNT) {
+        bool board = index == SYS_FIXED_COUNT + p->thread_count;
+        snprintf(item->name, sizeof(item->name), "%s", board ? "Board" : "Zephyr");
+        snprintf(item->value, sizeof(item->value), "%s", board ? CONFIG_BOARD : KERNEL_VERSION_STRING);
         return;
     }
 
-    uint64_t total = (uint64_t)st.f_frsize * st.f_blocks;
-    uint64_t used = (uint64_t)st.f_frsize * (st.f_blocks - st.f_bfree);
-    ui_label_set_fmt(row, "%u / %u MB", (unsigned int)(used >> 20), (unsigned int)(total >> 20));
-}
-
-static void sys_update_threads(void)
-{
-    sys_page_t *p = &self->page.sys;
-
-    for (int i = 0; i < p->thread_count; i++) {
-        size_t unused;
-
-        // 執行緒結束後 stack 可能已無效，查詢失敗就顯示 "-"
-        if (k_thread_stack_space_get(p->threads[i], &unused) != 0) {
-            ui_label_set_fmt(p->thread_rows[i], "-");
-            continue;
+    snprintf(item->name, sizeof(item->name), "%s", names[index]);
+    if (name_only) {
+        return;
+    }
+    switch (index) {
+    case SYS_UPTIME:
+        uptime_format(item->value, sizeof(item->value));
+        break;
+    case SYS_SYS_HEAP:
+        sys_heap_runtime_stats_get(&_system_heap.heap, &stats);
+        heap_item(item, &stats);
+        break;
+    case SYS_LVGL_HEAP:
+        lvgl_heap_stats(&stats);
+        heap_item(item, &stats);
+        break;
+    case SYS_SD:
+        if (p->sd_total_mb == 0) {
+            snprintf(item->value, sizeof(item->value), "No card");
+            break;
         }
-
-        size_t size = p->threads[i]->stack_info.size;
-        ui_label_set_fmt(p->thread_rows[i], "%u / %u", (unsigned int)(size - unused), (unsigned int)size);
+        snprintf(item->value, sizeof(item->value), "%u / %u MB", (unsigned int)p->sd_used_mb,
+                 (unsigned int)p->sd_total_mb);
+        item->percent = percent_of(p->sd_used_mb, p->sd_total_mb);
+        break;
+    default:
+        input_get(&angle);
+        angle_format(item->value, sizeof(item->value), index == SYS_ROLL ? angle.roll : angle.pitch);
+        break;
     }
 }
 
-static void sys_refresh(int64_t now)
+static void thread_collect_cb(const struct k_thread *thread, void *user_data)
 {
-    sys_page_t *p = &self->page.sys;
-    struct sys_memory_stats stats;
-    input_angle_t angle;
+    sys_page_t *p = &self->state.sys;
 
-    sys_update_uptime(p->rows[SYS_ROW_UPTIME]);
-
-    sys_heap_runtime_stats_get(&_system_heap.heap, &stats);
-    sys_update_heap(p->rows[SYS_ROW_SYS_HEAP], &stats);
-
-    lvgl_heap_stats(&stats);
-    sys_update_heap(p->rows[SYS_ROW_LVGL_HEAP], &stats);
-
-    if (p->last_sd_refresh == 0 || now - p->last_sd_refresh >= SYS_SD_REFRESH_MS) {
-        p->last_sd_refresh = now;
-        sys_update_sd(p->rows[SYS_ROW_SD]);
+    if (p->thread_count < SYS_MAX_THREADS) {
+        p->threads[p->thread_count++] = (k_tid_t)thread;
     }
+}
 
-    input_get(&angle);
-    row_set_angle(p->rows[SYS_ROW_ROLL], angle.roll);
-    row_set_angle(p->rows[SYS_ROW_PITCH], angle.pitch);
+// SD 卡查一次要讀 FAT，不用每次刷新都查
+static void sys_update_sd(int64_t now)
+{
+    sys_page_t *p = &self->state.sys;
+    struct fs_statvfs st;
 
-    sys_update_threads();
+    if (p->last_sd_refresh != 0 && now - p->last_sd_refresh < SYS_SD_REFRESH_MS) {
+        return;
+    }
+    p->last_sd_refresh = now;
+    if (fs_statvfs(SYS_SD_PATH, &st) < 0 || st.f_blocks == 0) {
+        p->sd_total_mb = 0;
+        return;
+    }
+    p->sd_total_mb = (uint32_t)(((uint64_t)st.f_frsize * st.f_blocks) >> 20);
+    p->sd_used_mb = (uint32_t)(((uint64_t)st.f_frsize * (st.f_blocks - st.f_bfree)) >> 20);
 }
 
 static void sys_create(void)
 {
-    sys_page_t *p = &self->page.sys;
+    sys_page_t *p = &self->state.sys;
 
-    p->rows[SYS_ROW_UPTIME] = row_create(LV_SYMBOL_REFRESH, "Uptime", SYSTEM_ACCENT_COLOR);
-    p->rows[SYS_ROW_SYS_HEAP] = row_create(LV_SYMBOL_DRIVE, "Sys heap", SYSTEM_ACCENT_COLOR);
-    p->rows[SYS_ROW_LVGL_HEAP] = row_create(LV_SYMBOL_IMAGE, "LVGL heap", SYSTEM_ACCENT_COLOR);
-    p->rows[SYS_ROW_SD] = row_create(LV_SYMBOL_SD_CARD, "SD card", SYSTEM_ACCENT_COLOR);
-    p->rows[SYS_ROW_ROLL] = row_create(LV_SYMBOL_GPS, "Roll", SYSTEM_ACCENT_COLOR);
-    p->rows[SYS_ROW_PITCH] = row_create(LV_SYMBOL_GPS, "Pitch", SYSTEM_ACCENT_COLOR);
-
-    // 先收集執行緒再建立列，不能在 foreach callback 裡呼叫 LVGL
     k_thread_foreach_unlocked(thread_collect_cb, NULL);
-    for (int i = 0; i < p->thread_count; i++) {
-        const char *name = k_thread_name_get(p->threads[i]);
-        char fallback[16];
-
-        if (name == NULL || name[0] == '\0') {
-            snprintf(fallback, sizeof(fallback), "%p", (void *)p->threads[i]);
-            name = fallback;
-        }
-        p->thread_rows[i] = row_create(LV_SYMBOL_SETTINGS, name, SYSTEM_ACCENT_COLOR);
-    }
-
-    ui_list_item(self->list, LV_SYMBOL_HOME, "Board", CONFIG_BOARD, lv_color_hex(SYSTEM_ACCENT_COLOR));
-    ui_list_item(self->list, LV_SYMBOL_EYE_OPEN, "Zephyr", KERNEL_VERSION_STRING, lv_color_hex(SYSTEM_ACCENT_COLOR));
+    sys_update_sd(k_uptime_get());
+    ui_wheel_create(&self->wheel, self->page, UI_TABS_BOTTOM, SYSTEM_ACCENT_COLOR, sys_get,
+                    SYS_FIXED_COUNT + p->thread_count + SYS_TAIL_COUNT);
 }
 
-/* ---------- NETWORK ---------- */
+/* ---------- WI-FI ---------- */
 
 static const char *net_status_text(const wlan_info_t *info)
 {
@@ -245,62 +272,91 @@ static const char *net_status_text(const wlan_info_t *info)
     return "Offline";
 }
 
-static void net_refresh(void)
+static int rssi_percent(int rssi)
 {
-    net_page_t *p = &self->page.net;
-    wlan_info_t info;
-    bool linked;
-
-    wlan_info(&info);
-    linked = info.state == WIFI_STATE_COMPLETED;
-
-    ui_label_set_fmt(p->rows[NET_ROW_STATUS], "%s", net_status_text(&info));
-    ui_label_set_fmt(p->rows[NET_ROW_SSID], "%s", linked ? info.ssid : "-");
-    if (linked) {
-        ui_label_set_fmt(p->rows[NET_ROW_SIGNAL], "%d dBm", info.rssi);
-        ui_label_set_fmt(p->rows[NET_ROW_CHANNEL], "%u", info.channel);
-    }
-    else {
-        ui_label_set_fmt(p->rows[NET_ROW_SIGNAL], "-");
-        ui_label_set_fmt(p->rows[NET_ROW_CHANNEL], "-");
-    }
-    ui_label_set_fmt(p->rows[NET_ROW_IP], "%s", info.ip[0] ? info.ip : "-");
-    ui_label_set_fmt(p->rows[NET_ROW_NETMASK], "%s", info.netmask[0] ? info.netmask : "-");
-    ui_label_set_fmt(p->rows[NET_ROW_GATEWAY], "%s", info.gateway[0] ? info.gateway : "-");
-    ui_label_set_fmt(p->rows[NET_ROW_MAC], "%02x:%02x:%02x:%02x:%02x:%02x", info.mac[0], info.mac[1], info.mac[2],
-                     info.mac[3], info.mac[4], info.mac[5]);
-
-    // 沒連上時畫空點，曲線會斷開
-    int32_t point = linked ? CLAMP(info.rssi, NET_RSSI_MIN, NET_RSSI_MAX) : LV_CHART_POINT_NONE;
-    lv_chart_set_next_value(p->chart, p->series, point);
+    return (CLAMP(rssi, NET_RSSI_MIN, NET_RSSI_MAX) - NET_RSSI_MIN) * 100 / (NET_RSSI_MAX - NET_RSSI_MIN);
 }
 
-// 用最新的掃描結果重建清單最後面的幾列
-static void net_show_scan_result(void)
+static void net_get(int index, ui_wheel_item_t *item, bool name_only)
 {
-    net_page_t *p = &self->page.net;
-    wlan_ap_t aps[WLAN_SCAN_MAX];
+    net_page_t *p = &self->state.net;
+    const wlan_info_t *info = &p->info;
+    bool linked = info->state == WIFI_STATE_COMPLETED;
+    static const char *const names[NET_FIXED_COUNT] = {
+        "Status", "SSID", "Signal", "Channel", "IP", "Netmask", "Gateway", "MAC", "Nearby networks",
+    };
 
-    for (int i = 0; i < p->scan_row_count; i++) {
-        lv_obj_delete(p->scan_rows[i]);
+    if (index >= NET_FIXED_COUNT) {
+        const wlan_ap_t *ap = &p->aps[index - NET_FIXED_COUNT];
+        snprintf(item->name, sizeof(item->name), "%s", ap->ssid[0] ? ap->ssid : "(hidden)");
+        snprintf(item->value, sizeof(item->value), "%d dBm", ap->rssi);
+        item->percent = rssi_percent(ap->rssi);
+        return;
     }
-    p->scan_row_count = wlan_scan_get(aps, ARRAY_SIZE(aps));
-    for (int i = 0; i < p->scan_row_count; i++) {
-        char detail[16];
-        snprintf(detail, sizeof(detail), "%d dBm", aps[i].rssi);
-        p->scan_rows[i] = ui_list_item(self->list, LV_SYMBOL_WIFI, aps[i].ssid, detail,
-                                       lv_color_hex(NET_ACCENT_COLOR));
+
+    snprintf(item->name, sizeof(item->name), "%s", names[index]);
+    if (name_only) {
+        return;
     }
-    ui_group_remove_children(self->list);
-    ui_label_set_fmt(p->scan_detail, "%d found", p->scan_row_count);
+    switch (index) {
+    case NET_STATUS:
+        snprintf(item->value, sizeof(item->value), "%s", net_status_text(info));
+        break;
+    case NET_SSID:
+        snprintf(item->value, sizeof(item->value), "%s", linked ? info->ssid : "-");
+        break;
+    case NET_SIGNAL:
+        if (linked) {
+            snprintf(item->value, sizeof(item->value), "%d dBm", info->rssi);
+        }
+        else {
+            snprintf(item->value, sizeof(item->value), "-");
+        }
+        item->extra = p->chart;
+        break;
+    case NET_CHANNEL:
+        if (linked) {
+            snprintf(item->value, sizeof(item->value), "%u", info->channel);
+        }
+        else {
+            snprintf(item->value, sizeof(item->value), "-");
+        }
+        break;
+    case NET_IP:
+        snprintf(item->value, sizeof(item->value), "%s", info->ip[0] ? info->ip : "-");
+        break;
+    case NET_NETMASK:
+        snprintf(item->value, sizeof(item->value), "%s", info->netmask[0] ? info->netmask : "-");
+        break;
+    case NET_GATEWAY:
+        snprintf(item->value, sizeof(item->value), "%s", info->gateway[0] ? info->gateway : "-");
+        break;
+    case NET_MAC:
+        snprintf(item->value, sizeof(item->value), "%02x:%02x:%02x:%02x:%02x:%02x", info->mac[0], info->mac[1],
+                 info->mac[2], info->mac[3], info->mac[4], info->mac[5]);
+        break;
+    default:
+        if (p->scanning) {
+            snprintf(item->value, sizeof(item->value), "Scanning");
+        }
+        else if (p->scan_error != 0) {
+            snprintf(item->value, sizeof(item->value), "Failed (%d)", p->scan_error);
+        }
+        else {
+            snprintf(item->value, sizeof(item->value), "%d found", p->ap_count);
+        }
+        break;
+    }
 }
 
-static lv_obj_t *net_chart_create(void)
+// 訊號曲線：Signal 那一項的內容，不在那一項時藏起來，但每秒都記
+static lv_obj_t *net_chart_create(lv_obj_t *parent)
 {
-    net_page_t *p = &self->page.net;
-    lv_obj_t *obj = lv_chart_create(self->list);
+    net_page_t *p = &self->state.net;
+    lv_obj_t *obj = lv_chart_create(parent);
 
-    lv_obj_set_size(obj, LV_PCT(100), NET_CHART_HEIGHT);
+    lv_obj_set_size(obj, NET_CHART_WIDTH, NET_CHART_HEIGHT);
+    lv_obj_align(obj, LV_ALIGN_TOP_MID, 0, NET_CHART_Y);
     lv_obj_set_clickable(obj, false);
     lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
@@ -319,44 +375,42 @@ static lv_obj_t *net_chart_create(void)
     lv_chart_set_div_line_count(obj, (NET_RSSI_MAX - NET_RSSI_MIN) / 20 - 1, 0);
     p->series = lv_chart_add_series(obj, lv_color_hex(NET_ACCENT_COLOR), LV_CHART_AXIS_PRIMARY_Y);
     lv_chart_set_all_values(obj, p->series, LV_CHART_POINT_NONE);
+    lv_obj_set_hidden(obj, true);
     return obj;
+}
+
+static void net_update(void)
+{
+    net_page_t *p = &self->state.net;
+
+    wlan_info(&p->info);
+    // 沒連上時畫空點，曲線會斷開
+    bool linked = p->info.state == WIFI_STATE_COMPLETED;
+    int32_t point = linked ? CLAMP(p->info.rssi, NET_RSSI_MIN, NET_RSSI_MAX) : LV_CHART_POINT_NONE;
+    lv_chart_set_next_value(p->chart, p->series, point);
 }
 
 static void net_create(void)
 {
-    net_page_t *p = &self->page.net;
+    net_page_t *p = &self->state.net;
 
-    // 訊號強度曲線放在清單最上面，往下捲時一起捲走；切換分頁後重新開始畫
-    p->chart = net_chart_create();
-
-    p->rows[NET_ROW_STATUS] = row_create(LV_SYMBOL_OK, "Status", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_SSID] = row_create(LV_SYMBOL_WIFI, "SSID", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_SIGNAL] = row_create(LV_SYMBOL_BARS, "Signal", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_CHANNEL] = row_create(LV_SYMBOL_SHUFFLE, "Channel", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_IP] = row_create(LV_SYMBOL_HOME, "IP", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_NETMASK] = row_create(LV_SYMBOL_LIST, "Netmask", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_GATEWAY] = row_create(LV_SYMBOL_UPLOAD, "Gateway", NET_ACCENT_COLOR);
-    p->rows[NET_ROW_MAC] = row_create(LV_SYMBOL_SETTINGS, "MAC", NET_ACCENT_COLOR);
-
-    // 附近的網路接在最後面
-    p->scan_detail = row_create(LV_SYMBOL_REFRESH, "Nearby", NET_ACCENT_COLOR);
+    wlan_info(&p->info);
     int ret = wlan_scan();
-    if (ret == 0 || ret == -EBUSY) {
-        p->scanning = true;
-        ui_label_set_fmt(p->scan_detail, "Scanning");
-    }
-    else {
-        ui_label_set_fmt(p->scan_detail, "Failed (%d)", ret);
-    }
+    p->scanning = ret == 0 || ret == -EBUSY;
+    p->scan_error = p->scanning ? 0 : ret;
+
+    ui_wheel_create(&self->wheel, self->page, UI_TABS_BOTTOM, NET_ACCENT_COLOR, net_get, NET_FIXED_COUNT);
+    p->chart = net_chart_create(self->wheel.box);
 }
 
 static void net_run(void)
 {
-    net_page_t *p = &self->page.net;
+    net_page_t *p = &self->state.net;
 
     if (p->scanning && !wlan_scan_busy()) {
         p->scanning = false;
-        net_show_scan_result();
+        p->ap_count = wlan_scan_get(p->aps, ARRAY_SIZE(p->aps));
+        ui_wheel_set_count(&self->wheel, NET_FIXED_COUNT + p->ap_count);
     }
 }
 
@@ -366,43 +420,54 @@ static void refresh(int64_t now)
 {
     self->last_refresh = now;
     if (self->mode == MODE_SYSTEM) {
-        sys_refresh(now);
+        sys_update_sd(now);
     }
     else {
-        net_refresh();
+        net_update();
     }
+    ui_wheel_refresh(&self->wheel);
 }
 
-// 刪掉目前的清單，建立 mode 那一頁
+static lv_obj_t *page_create(lv_obj_t *scr)
+{
+    lv_obj_t *page = lv_obj_create(scr);
+    lv_obj_remove_style_all(page);
+    lv_obj_set_size(page, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_scrollable(page, false);
+    lv_obj_set_clickable(page, false);
+    return page;
+}
+
+// 刪掉目前那一頁，建立 mode 那一頁
 static void tab_show(int mode)
 {
     self->mode = mode;
-    if (self->list != NULL) {
-        lv_obj_delete(self->list);
+    if (self->page != NULL) {
+        lv_obj_delete(self->page);
     }
-    memset(&self->page, 0, sizeof(self->page));
+    memset(&self->state, 0, sizeof(self->state));
+    memset(&self->wheel, 0, sizeof(self->wheel));
 
-    self->list = ui_list_create(self->scr);
-    lv_obj_set_height(self->list, UI_SCREEN_SIZE - UI_TABS_BOTTOM - 4);
+    self->page = page_create(self->scr);
+    // 分頁籤要畫在上面，頁面移到最底層
+    lv_obj_move_to_index(self->page, 0);
     if (mode == MODE_SYSTEM) {
         sys_create();
     }
     else {
         net_create();
     }
-    // 列只是顯示用，不能被 next / prev 選到（那是切換分頁）
-    ui_group_remove_children(self->list);
-    refresh(k_uptime_get());
+    self->last_refresh = k_uptime_get();
 }
 
 static void tab_action(int mode)
 {
-    ui_list_scroll_page(self->list);
+    ui_wheel_move(&self->wheel, 1);
 }
 
 static void tab_scroll(int mode, int dir)
 {
-    ui_list_scroll(self->list, dir);
+    ui_wheel_move(&self->wheel, dir);
 }
 
 static void app_system_init(void *scr)
