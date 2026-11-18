@@ -105,16 +105,16 @@ static int photos_load(void)
     return n;
 }
 
-// 黑底上暗色的小字透過稜鏡幾乎看不到：主要的一行用白色大字，說明用亮一點的灰
+// 透過稜鏡小字和灰字都看不清楚：兩行都是白色 18 px，說明盡量短
 static void message_show(const char *text, const char *detail)
 {
     lv_obj_t *label = ui_label(self->scr, &lv_font_montserrat_18, THEME_TEXT);
 
     lv_label_set_text(label, text);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, -36);
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, -24);
 
-    label = ui_label(self->scr, &lv_font_montserrat_14, THEME_TEXT_SECONDARY);
+    label = ui_label(self->scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_label_set_text(label, detail);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(label, LV_ALIGN_CENTER, 0, 24);
@@ -148,7 +148,7 @@ static void photo_show(int index, int step)
     // 一張都畫不出來（常見：沒轉檔的原圖，太大或是 progressive）：回到 LVGL 畫面說明原因，不再重試
     LOG_ERR("No photo could be shown");
     self->photo_count = 0;
-    message_show(LV_SYMBOL_WARNING "  Cannot show\nthe photos", "They must be JPEG, 240x240 or\nsmaller. Upload them with the\nShare web page (it resizes)\nor convert: just img2jpg");
+    message_show(LV_SYMBOL_WARNING "  Cannot show\nthe photos", "Use JPEG, 240x240\nor smaller");
     lv_obj_invalidate(self->scr);
 }
 
@@ -183,7 +183,7 @@ static void app_photos_init(void *scr)
     LOG_INF("%d photos in %s", self->photo_count, PHOTO_ROOT);
 
     if (self->photo_count == 0) {
-        message_show("No photos", "Put JPEG files in /photo\non the SD card, e.g. with\nthe Share app");
+        message_show("No photos", "Put JPEGs in /photo");
         return;
     }
 

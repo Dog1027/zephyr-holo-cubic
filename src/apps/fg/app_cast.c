@@ -21,7 +21,6 @@
 
 typedef struct {
     lv_obj_t *addr_label;
-    lv_obj_t *info_label;
     int listen_fd;
     int fd;
     bool online;
@@ -75,16 +74,9 @@ static void ui_update(void)
         wlan_info(&info);
         ui_label_set_fmt(self->addr_label, "%s:%d", info.ip, CAST_PORT);
     }
-    if (self->frames + self->bad_frames == 0) {
-        lv_label_set_text(self->info_label, "Run on the computer:\njust cast <address> <images, GIF\nor --screen>");
-    }
-    else {
-        ui_label_set_fmt(self->info_label, "Last cast: %u frames%s", (unsigned int)self->frames,
-                         self->bad_frames ? ", some not baseline JPEG" : "");
-    }
 }
 
-// 回到 LVGL 畫的說明畫面
+// 回到 LVGL 畫的位址畫面
 static void conn_close(void)
 {
     if (self->fd < 0) {
@@ -162,17 +154,13 @@ static void app_cast_init(void *scr)
 {
     ui_screen_init(scr);
     lv_obj_set_style_bg_color(scr, lv_color_hex(THEME_BLACK), 0);
-    ui_title(scr, "Cast");
     self->listen_fd = -1;
     self->fd = -1;
     self->start_ms = k_uptime_get();
 
     self->addr_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(self->addr_label, LV_ALIGN_CENTER, 0, -20);
+    lv_obj_align(self->addr_label, LV_ALIGN_CENTER, 0, 0);
 
-    self->info_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
-    lv_obj_set_style_text_align(self->info_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(self->info_label, LV_ALIGN_CENTER, 0, 34);
 
     self->online = wlan_is_online();
     listen_update();

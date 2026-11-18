@@ -175,7 +175,8 @@ static void app_uptime_exit(void *scr)
 - **`init`** 每次開啟都會呼叫，畫面是空的。**`run`** 每一幀呼叫一次，不能阻塞。**`exit`** 釋放自己配置的資源，畫面上的物件由框架刪除。LVGL 只能在這三個 callback 裡呼叫。
 - **狀態放在 `self_t`**，用 `self->` 存取，不要寫成 `static`。所有前景 app 共用同一塊記憶體，`init` 之前會清成 0，`exit` 之後不能再用。放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。只有離開 app 後還要保留的東西才用 `static`，並註明原因。
 - **會等待的工作不能放在 `run`**：DNS、HTTP 這類丟到 `net_job_queue()`，app 只讀結果。只在 app 開著時需要的 server 用 `net_server.h` 的 non-blocking socket。
-- **顏色用 `theme.h`**，不要寫色碼。透過稜鏡看，暗色的字幾乎看不到，要讀的文字用 `THEME_TEXT` 或 `THEME_TEXT_SECONDARY`。
+- **顏色用 `theme.h`**，不要寫色碼。**透過稜鏡看，小字和非白色的字都看不清楚**：要讀的文字一律 `THEME_TEXT`、至少 18 px（Montserrat 18 / 48），顏色只用在大字、色塊和反白。說明、單位這類小字寧可拿掉。
+- **有好幾頁的 app 用 `ui_tabs.h`**（Dice、Clock、System），操作才會一致：next / prev 切分頁，OK 和敲一下是目前分頁的動作。
 - **先找現成的**：`ui.h`（標籤、清單）、`nav.h`（自己處理 next / prev / ok / 敲擊）、`prefs.h`（重開機後保留的值）、`conf.h`（使用者設定）、`jpeg.h`（顯示 JPEG）、`led.h`、`file.h`。
 - **圖示**：在 `tools/mkicons.py` 的清單加一行後重新執行，用法在檔案開頭。
 

@@ -80,8 +80,7 @@ static void icon_draw(lv_obj_t *icon, weather_kind_t kind)
         lv_obj_t *bolt = lv_label_create(icon);
         lv_label_set_text(bolt, LV_SYMBOL_CHARGE);
         lv_obj_set_style_text_color(bolt, lv_color_hex(SUN_COLOR), 0);
-        lv_obj_set_style_text_font(bolt, size > 40 ? &lv_font_montserrat_18 : &lv_font_montserrat_14,
-                                   0);
+        lv_obj_set_style_text_font(bolt, &lv_font_montserrat_18, 0);
         lv_obj_align(bolt, LV_ALIGN_BOTTOM_MID, 0, size / 8);
         break;
     }

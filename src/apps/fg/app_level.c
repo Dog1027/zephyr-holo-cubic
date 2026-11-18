@@ -102,7 +102,7 @@ static void app_level_init(void *scr)
     lv_obj_set_style_bg_color(self->bubble, lv_color_hex(LEVEL_TILT_COLOR), 0);
 
     self->angle_label = lv_label_create(scr);
-    lv_obj_set_style_text_font(self->angle_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(self->angle_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(self->angle_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(self->angle_label, LV_ALIGN_BOTTOM_MID, 0, -4);
 

@@ -22,7 +22,6 @@
 #define AQUA_SMELL_PX       110.0f  // 微生物聞得到飼料的距離
 #define AQUA_EAT_PX         7.0f
 #define AQUA_STEP_MS        33      // 大約 30 fps
-#define AQUA_HINT_MS        4000
 #define AQUA_SCREEN         ((float)UI_SCREEN_SIZE)
 #define AQUA_TAU            6.2831853f
 
@@ -49,9 +48,7 @@ typedef struct {
 typedef struct {
     creature_t creatures[AQUA_CREATURES];
     food_t food[AQUA_FOOD_MAX];
-    lv_obj_t *hint;
     int64_t last_ms;
-    int64_t start_ms;
     bool pending_feed;
 } self_t;
 
@@ -283,8 +280,7 @@ static bool nav_cb(nav_cmd_t cmd)
 static void app_aquarium_init(void *scr)
 {
     ui_screen_init(scr);
-    self->start_ms = k_uptime_get();
-    self->last_ms = self->start_ms;
+    self->last_ms = k_uptime_get();
 
     // 水母在後面；種類：大的各一隻，再多一隻小的
     static const uint8_t jellies[AQUA_JELLIES] = {AQUA_MOON_JELLY, AQUA_LONG_JELLY, AQUA_BABY_JELLY, AQUA_BABY_JELLY};
@@ -319,9 +315,6 @@ static void app_aquarium_init(void *scr)
         self->food[i].obj = obj;
     }
 
-    self->hint = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_SECONDARY);
-    lv_label_set_text(self->hint, "Tap or OK: feed");
-    lv_obj_align(self->hint, LV_ALIGN_BOTTOM_MID, 0, -10);
 
     nav_set_handler(nav_cb);
 }
@@ -333,10 +326,6 @@ static void app_aquarium_run(void *scr)
     if (self->pending_feed) {
         self->pending_feed = false;
         feed();
-    }
-    if (self->hint != NULL && now - self->start_ms > AQUA_HINT_MS) {
-        lv_obj_delete(self->hint);
-        self->hint = NULL;
     }
     if (now - self->last_ms < AQUA_STEP_MS) {
         return;

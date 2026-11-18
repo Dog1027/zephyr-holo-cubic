@@ -61,7 +61,6 @@ typedef struct {
     lv_obj_t *status_label;
     lv_obj_t *file_label;
     lv_obj_t *bar;
-    lv_obj_t *total_label;
 
     int listen_fd;
     int fd;
@@ -931,11 +930,9 @@ static void ui_update(void)
     else if (self->uploads + self->downloads > 0) {
         lv_bar_set_value(self->bar, 100, LV_ANIM_OFF);
     }
-    ui_label_set_fmt(self->total_label, "Up %d   Down %d", self->uploads, self->downloads);
 }
 
 #define SHARE_PIN_KEY   "share/pin"
-#define SHARE_HINT      "Enter the PIN once.  OK: new PIN"
 
 // 換一組 PIN，舊的馬上失效（瀏覽器會再問一次）
 static void pin_new(void)
@@ -967,7 +964,6 @@ static bool nav_cb(nav_cmd_t cmd)
 static void app_share_init(void *scr)
 {
     ui_screen_init(scr);
-    ui_title(scr, "Share");
     self->listen_fd = -1;
     self->fd = -1;
     if (prefs_load(SHARE_PIN_KEY, &self->pin, sizeof(self->pin)) != sizeof(self->pin) || self->pin < 0 ||
@@ -983,25 +979,21 @@ static void app_share_init(void *scr)
     lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, -22);
     pin_show();
 
-    self->status_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
-    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 18);
+    self->status_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
+    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 20);
 
-    self->file_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT);
+    self->file_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_width(self->file_label, 200);
     lv_label_set_long_mode(self->file_label, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(self->file_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(self->file_label, LV_ALIGN_CENTER, 0, 40);
+    lv_obj_align(self->file_label, LV_ALIGN_CENTER, 0, 46);
 
     self->bar = lv_bar_create(scr);
     lv_obj_set_size(self->bar, 180, 8);
-    lv_obj_align(self->bar, LV_ALIGN_CENTER, 0, 62);
+    lv_obj_align(self->bar, LV_ALIGN_CENTER, 0, 72);
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(SHARE_ACCENT_COLOR), LV_PART_INDICATOR);
 
-    self->total_label = ui_label(scr, &lv_font_montserrat_14, THEME_TEXT_DIM);
-    lv_obj_align(self->total_label, LV_ALIGN_BOTTOM_MID, 0, -14);
-
-    ui_status(SHARE_HINT);
     self->online = wlan_is_online();
     listen_update(self->online);
     ui_update();
@@ -1016,7 +1008,7 @@ static void app_share_run(void *scr)
     if (online != self->online) {
         self->online = online;
         listen_update(online);
-        ui_status(online ? SHARE_HINT : "Waiting for Wi-Fi");
+        ui_status(online ? "" : "Waiting for Wi-Fi");
         self->ui_dirty = true;
     }
     else if (online && self->listen_fd < 0) {

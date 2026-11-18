@@ -30,7 +30,6 @@ typedef struct {
     lv_obj_t *dots[ARRAY_SIZE(colors)];
     lv_obj_t *preview;
     lv_obj_t *name_label;
-    lv_obj_t *state_label;
     int saved;      // 確認過的顏色，init 時從 led.c 的基礎顏色讀回來（離開 app 後 LED 繼續亮）
 } self_t;
 
@@ -65,10 +64,9 @@ static void preview_show(int index)
 {
     lv_obj_set_style_bg_color(self->preview, lv_color_hex(colors[index].rgb), 0);
     lv_obj_set_style_border_width(self->preview, index == LIGHT_OFF ? 2 : 0, 0);
-    lv_label_set_text(self->name_label, colors[index].name);
-    // 文字顏色設在 preview 上，兩個 label 一起繼承
-    lv_obj_set_style_text_color(self->preview, lv_color_hex(index == LIGHT_OFF ? THEME_TEXT_DIM : THEME_BG), 0);
-    lv_label_set_text(self->state_label, index == self->saved ? "Current" : "OK to set");
+    lv_label_set_text_fmt(self->name_label, "%s%s", colors[index].name, index == self->saved ? "  " LV_SYMBOL_OK : "");
+    // 文字顏色設在 preview 上，label 繼承
+    lv_obj_set_style_text_color(self->preview, lv_color_hex(index == LIGHT_OFF ? THEME_TEXT : THEME_BG), 0);
 }
 
 static void dot_focused_cb(lv_event_t *e)
@@ -114,11 +112,7 @@ static void app_light_init(void *scr)
     lv_obj_set_clickable(self->preview, false);
 
     self->name_label = lv_label_create(self->preview);
-    lv_obj_align(self->name_label, LV_ALIGN_CENTER, 0, -8);
-
-    self->state_label = lv_label_create(self->preview);
-    lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(self->state_label, LV_ALIGN_CENTER, 0, 14);
+    lv_obj_center(self->name_label);
 
     // 從正上方開始順時針排一圈
     for (int i = 0; i < (int)ARRAY_SIZE(colors); i++) {

@@ -74,12 +74,12 @@ static void styles_init(void)
     styles_inited = true;
 
     lv_style_init(&style_chip);
-    lv_style_set_size(&style_chip, 32, 24);
+    lv_style_set_size(&style_chip, 34, 28);
     lv_style_set_radius(&style_chip, 8);
     lv_style_set_bg_color(&style_chip, lv_color_hex(TIMER_ACCENT_COLOR));
     lv_style_set_bg_opa(&style_chip, LV_OPA_TRANSP);
-    lv_style_set_text_color(&style_chip, lv_color_hex(THEME_TEXT_DIM));
-    lv_style_set_text_font(&style_chip, &lv_font_montserrat_14);
+    lv_style_set_text_color(&style_chip, lv_color_hex(THEME_TEXT));
+    lv_style_set_text_font(&style_chip, &lv_font_montserrat_18);
 
     lv_style_init(&style_chip_focused);
     lv_style_set_bg_opa(&style_chip_focused, LV_OPA_COVER);
@@ -224,11 +224,11 @@ static void app_timer_init(void *scr)
     lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
 
     self->state_label = lv_label_create(scr);
-    lv_obj_set_width(self->state_label, 140);
+    lv_obj_set_width(self->state_label, 200);
     lv_label_set_long_mode(self->state_label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(self->state_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(self->state_label, lv_color_hex(THEME_TEXT_DIM), 0);
+    lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(self->state_label, lv_color_hex(THEME_TEXT), 0);
     lv_obj_align(self->state_label, LV_ALIGN_CENTER, 0, 34);
 
     self->tap_area = ui_tap_area(scr, tap_cb, NULL);
@@ -236,7 +236,7 @@ static void app_timer_init(void *scr)
 
     self->chips = lv_obj_create(scr);
     lv_obj_remove_style_all(self->chips);
-    lv_obj_set_size(self->chips, LV_PCT(100), 24);
+    lv_obj_set_size(self->chips, LV_PCT(100), 28);
     lv_obj_align(self->chips, LV_ALIGN_BOTTOM_MID, 0, -6);
     lv_obj_set_flex_flow(self->chips, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(self->chips, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
