@@ -903,25 +903,25 @@ void share_page_create(share_page_t *state, lv_obj_t *scr)
     }
 
     self->url_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(self->url_label, LV_ALIGN_CENTER, 0, -62);
+    lv_obj_align(self->url_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y - 62);
 
     self->pin_label = ui_label(scr, &lv_font_montserrat_48, SHARE_ACCENT_COLOR);
     lv_obj_set_style_text_letter_space(self->pin_label, 4, 0);
-    lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, -22);
+    lv_obj_align(self->pin_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y - 22);
     ui_label_set_fmt(self->pin_label, "%04d", self->pin);
 
     self->status_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 20);
 
     self->file_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_width(self->file_label, 200);
     lv_label_set_long_mode(self->file_label, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(self->file_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(self->file_label, LV_ALIGN_CENTER, 0, 46);
+    lv_obj_align(self->file_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 46);
 
     self->bar = lv_bar_create(scr);
     lv_obj_set_size(self->bar, 180, 8);
-    lv_obj_align(self->bar, LV_ALIGN_CENTER, 0, 72);
+    lv_obj_align(self->bar, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 72);
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_bg_color(self->bar, lv_color_hex(SHARE_ACCENT_COLOR), LV_PART_INDICATOR);
 

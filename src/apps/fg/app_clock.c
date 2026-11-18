@@ -13,7 +13,6 @@
 
 #define CLOCK_ACCENT_COLOR  THEME_CYAN
 #define CLOCK_ARC_SIZE      196
-#define CLOCK_ARC_Y         20  // 圓環中心比畫面中心低一點，上面讓給分頁籤
 #define CLOCK_ARC_WIDTH     6
 #define CLOCK_ARC_STEP_MS   50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
 
@@ -97,7 +96,7 @@ static void clock_page_create(lv_obj_t *scr)
     // 秒數圓環：一分鐘走一圈，單位是 CLOCK_ARC_STEP_MS
     self->arc = lv_arc_create(scr);
     lv_obj_set_size(self->arc, CLOCK_ARC_SIZE, CLOCK_ARC_SIZE);
-    lv_obj_align(self->arc, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y);
+    lv_obj_align(self->arc, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y);
     lv_arc_set_rotation(self->arc, 270);
     lv_arc_set_bg_angles(self->arc, 0, 360);
     lv_arc_set_range(self->arc, 0, 60000 / CLOCK_ARC_STEP_MS);
@@ -110,11 +109,11 @@ static void clock_page_create(lv_obj_t *scr)
     lv_obj_set_style_arc_color(self->arc, lv_color_hex(CLOCK_ACCENT_COLOR), LV_PART_INDICATOR);
 
     self->time_label = ui_label(scr, &lv_font_montserrat_48, THEME_TEXT);
-    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y - 10);
+    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y - 10);
     self->date_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
+    lv_obj_align(self->date_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 34);
     self->status_label = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, CLOCK_ARC_Y + 34);
+    lv_obj_align(self->status_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 34);
 }
 
 static void app_clock_init(void *scr)

@@ -158,25 +158,25 @@ void weather_page_create(weather_page_t *v, lv_obj_t *scr)
     lv_obj_set_width(v->area, UI_SCREEN_SIZE - 24);
     lv_label_set_long_mode(v->area, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(v->area, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(v->area, LV_ALIGN_TOP_MID, 0, UI_TABS_BOTTOM + 10);
+    lv_obj_align(v->area, LV_ALIGN_TOP_MID, 0, UI_TABS_BOTTOM + 16);
 
     v->icon = icon_create(v->data_box, ICON_SIZE);
-    lv_obj_align(v->icon, LV_ALIGN_TOP_LEFT, 24, 82);
+    lv_obj_align(v->icon, LV_ALIGN_TOP_LEFT, 24, 88);
     v->temp = ui_label(v->data_box, &lv_font_montserrat_48, THEME_TEXT);
-    lv_obj_align(v->temp, LV_ALIGN_TOP_LEFT, 114, 94);
+    lv_obj_align(v->temp, LV_ALIGN_TOP_LEFT, 114, 100);
 
     v->desc = ui_label(v->data_box, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_width(v->desc, UI_SCREEN_SIZE - 24);
     lv_label_set_long_mode(v->desc, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_style_text_align(v->desc, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(v->desc, LV_ALIGN_TOP_MID, 0, 170);
+    lv_obj_align(v->desc, LV_ALIGN_TOP_MID, 0, 176);
 
     v->range = ui_label(v->data_box, &lv_font_montserrat_18, THEME_TEXT);
-    lv_obj_align(v->range, LV_ALIGN_TOP_MID, 0, 198);
+    lv_obj_align(v->range, LV_ALIGN_TOP_MID, 0, 204);
 
     v->spinner = lv_spinner_create(scr);
     lv_obj_set_size(v->spinner, 72, 72);
-    lv_obj_align(v->spinner, LV_ALIGN_CENTER, 0, -8);
+    lv_obj_align(v->spinner, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y - 16);
     lv_obj_set_style_arc_width(v->spinner, 6, LV_PART_MAIN);
     lv_obj_set_style_arc_color(v->spinner, lv_color_hex(THEME_TRACK), LV_PART_MAIN);
     lv_obj_set_style_arc_width(v->spinner, 6, LV_PART_INDICATOR);
@@ -185,7 +185,7 @@ void weather_page_create(weather_page_t *v, lv_obj_t *scr)
 
     v->status = ui_label(scr, &lv_font_montserrat_18, THEME_TEXT);
     lv_obj_set_style_text_align(v->status, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(v->status, LV_ALIGN_CENTER, 0, 52);
+    lv_obj_align(v->status, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y + 44);
 }
 
 void weather_page_refresh(void)

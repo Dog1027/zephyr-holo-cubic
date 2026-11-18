@@ -16,6 +16,8 @@
 
 #define UI_TABS_Y       12      // the tab row: from here
 #define UI_TABS_BOTTOM  40      // to here, put the content below
+// Add to LV_ALIGN_CENTER offsets so a page is centred in the area below the tabs, not on the screen
+#define UI_TABS_CENTER_Y    (UI_TABS_BOTTOM / 2)
 
 typedef struct {
     const char *const *names;

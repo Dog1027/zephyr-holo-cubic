@@ -12,7 +12,6 @@
 #define LOTS_MAX            32
 #define LOTS_LEN            40
 #define DICE_SIZE           110
-#define DICE_Y              (UI_TABS_BOTTOM / 2)    // 分頁籤下面那塊的中間
 #define DICE_PIP_SIZE       18
 #define DICE_PIP_OFFSET     30
 #define ROLL_MS             700   // 停止搖晃後再滾這麼久才停
@@ -141,7 +140,7 @@ static void app_dice_init(void *scr)
     lv_obj_set_style_radius(self->dice, 22, 0);
     lv_obj_set_style_bg_color(self->dice, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(self->dice, LV_OPA_COVER, 0);
-    lv_obj_align(self->dice, LV_ALIGN_CENTER, 0, DICE_Y);
+    lv_obj_align(self->dice, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y);
     lv_obj_set_scrollable(self->dice, false);
     lv_obj_set_clickable(self->dice, false);
 
@@ -162,7 +161,7 @@ static void app_dice_init(void *scr)
     lv_label_set_long_mode(self->lot_label, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_style_text_align(self->lot_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(self->lot_label, lv_color_hex(THEME_TEXT), 0);
-    lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, DICE_Y);
+    lv_obj_align(self->lot_label, LV_ALIGN_CENTER, 0, UI_TABS_CENTER_Y);
 
     // 建立時就會呼叫 tab_show，內容要先建好
     static const char *const names[] = {"DICE", "LOTS"};
