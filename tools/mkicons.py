@@ -18,8 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 ICONS = [
     ("CLOCK", "clock-outline", 0xF0150),
     ("FILES", "folder-open", 0xF0770),
-    ("ANIM", "animation-play", 0xF093A),
-    ("PHOTOS", "image-multiple", 0xF02F9),
+    ("GALLERY", "image-multiple", 0xF02F9),
     ("LEVEL", "spirit-level", 0xF14F1),
     ("DICE", "dice-5", 0xF01CE),
     ("LIGHT", "lightbulb-on", 0xF06E8),

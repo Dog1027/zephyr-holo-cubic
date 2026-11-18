@@ -14,8 +14,7 @@
 |---|---|
 | Clock | 網路對時的時鐘；WEATHER 分頁是目前天氣和三天預報（wttr.in） |
 | Files | FILES 分頁瀏覽 SD 卡（點檔案看大小）；SHARE 分頁是網頁版的檔案管理 |
-| Anim | 播放 `/anim/<名稱>/` 裡的 JPEG 序列 |
-| Photos | `/photo/` 裡的相片，可自動輪播 |
+| Gallery | PHOTOS 分頁：`/photo/` 裡的相片，可自動輪播；ANIM 分頁：播放 `/anim/<名稱>/` 裡的 JPEG 序列 |
 | Level | 水平儀 |
 | Dice | 骰子，以及從 `/lots.txt` 抽籤 |
 | Light | 用 RGB LED 當氣氛燈 |
@@ -61,7 +60,7 @@ just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
 在 `just monitor` 裡輸入指令，`help` 會列出全部，常用的：
 
 ```
-app list / app open Photos / app close
+app list / app open Gallery / app close
 ui next / ui prev / ui ok / ui back / ui tap
 ui up / ui down / ui left / ui right    app 沒用到方向時，上左等於 prev、下右等於 next
 ui remote             遙控模式：方向鍵或 wasd、Enter、e（敲一下）、q（返回）、Ctrl+C 離開
@@ -70,7 +69,7 @@ wlan status / wlan scan / wlan forget
 config list           所有設定
 ```
 
-敲一下裝置在 app 裡預設等於 `ui next`，在 Menu 沒有作用。部分 app 另有用途，例如 Photos 換下一張、Dice 擲骰。
+敲一下裝置在 app 裡預設等於 `ui next`，在 Menu 沒有作用。部分 app 另有用途，例如 Gallery 換下一張相片、Dice 擲骰。
 
 ## 設定
 
@@ -96,7 +95,7 @@ config list           所有設定
 SD 卡要格式化成 FAT32。
 
 ```
-/photo/*.jpg            Photos 的照片
+/photo/*.jpg            Gallery 的相片
 /anim/<名稱>/000.jpg…   每個動畫一個資料夾，編號不能缺號；選用的 delay.txt 是每格毫秒數
 /lots.txt               抽籤清單，一行一項（只支援英數字）
 ```
@@ -176,7 +175,7 @@ static void app_uptime_exit(void *scr)
 - **狀態放在 `self_t`**，用 `self->` 存取，不要寫成 `static`。所有前景 app 共用同一塊記憶體，`init` 之前會清成 0，`exit` 之後不能再用。放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。只有離開 app 後還要保留的東西才用 `static`，並註明原因。
 - **會等待的工作不能放在 `run`**：DNS、HTTP 這類丟到 `net_job_queue()`，app 只讀結果。只在 app 開著時需要的 server 用 `net_server.h` 的 non-blocking socket。
 - **顏色用 `theme.h`**，不要寫色碼。**透過稜鏡看，小字和非白色的字都看不清楚**：要讀的文字一律 `THEME_TEXT`、至少 18 px（Montserrat 18 / 48），顏色只用在大字、色塊和反白。說明、單位這類小字寧可拿掉。
-- **有好幾頁的 app 用 `ui_tabs.h`**（Dice、Clock、System、Files），操作才會一致：next / prev 切分頁，OK 和敲一下是目前分頁的動作。
+- **有好幾頁的 app 用 `ui_tabs.h`**（Dice、Clock、System、Files、Gallery），操作才會一致：next / prev 切分頁，OK 和敲一下是目前分頁的動作。
 - **先找現成的**：`ui.h`（標籤、清單）、`nav.h`（自己處理 next / prev / ok / 敲擊）、`prefs.h`（重開機後保留的值）、`conf.h`（使用者設定）、`jpeg.h`（顯示 JPEG）、`led.h`、`file.h`。
 - **圖示**：在 `tools/mkicons.py` 的清單加一行後重新執行，用法在檔案開頭。
 
@@ -210,7 +209,7 @@ tools/          電腦端的工具：轉檔、投影、圖示字型、實機測�
 - **剛連上網路時 DNS 可能沒回應**：短時間內重新連線時偶爾發生，是網路端的行為，靠重試處理。`just test` 偶爾會因此出現一筆 SNTP 或 weather 的 warning。
 - **LED 偶爾寫入失敗**：ws2812 driver 在只有一顆 LED 時的時序問題，`led.c` 會重送。
 - **編譯器 bug**：SDK 1.0.1 的 Xtensa GCC 會把 TJpgDec 的一段迴圈編錯，解碼時當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
-- **`just test` 不會解碼 JPEG**：除非卡上有照片。改到 JPEG 相關的程式後，要實際開 Photos 或用 Cast 確認。
+- **`just test` 不會解碼 JPEG**：除非卡上有照片。改到 JPEG 相關的程式後，要實際開 Gallery 或用 Cast 確認。
 - **字型**：內建的 Montserrat 不含中文。
 
 ## 授權

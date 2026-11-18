@@ -10,8 +10,7 @@ extern const lv_font_t font_icons;
 
 #define ICON_CLOCK    "\xF3\xB0\x85\x90"  // clock-outline
 #define ICON_FILES    "\xF3\xB0\x9D\xB0"  // folder-open
-#define ICON_ANIM     "\xF3\xB0\xA4\xBA"  // animation-play
-#define ICON_PHOTOS   "\xF3\xB0\x8B\xB9"  // image-multiple
+#define ICON_GALLERY  "\xF3\xB0\x8B\xB9"  // image-multiple
 #define ICON_LEVEL    "\xF3\xB1\x93\xB1"  // spirit-level
 #define ICON_DICE     "\xF3\xB0\x87\x8E"  // dice-5
 #define ICON_LIGHT    "\xF3\xB0\x9B\xA8"  // lightbulb-on

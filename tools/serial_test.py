@@ -60,8 +60,7 @@ cmd("app list", 1)
 plan = [
     ("Clock", ["ui next", "ui ok", "ui prev"]),
     ("Files", ["ui down", "ui ok", "ui ok", "ui up", "ui right", "ui left"]),
-    ("Anim", ["ui next", "ui ok"]),
-    ("Photos", ["ui next", "ui tap", "ui prev"]),
+    ("Gallery", ["ui down", "ui tap", "ui right", "ui ok", "ui ok", "ui left"]),
     ("Level", ["ui next", "ui prev"]),
     ("Dice", ["ui tap", "ui next", "ui ok", "ui prev"]),
     ("Light", ["ui next", "ui next", "ui prev"]),
