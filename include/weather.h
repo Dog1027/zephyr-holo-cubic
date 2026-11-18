@@ -4,14 +4,13 @@
 #include <stdint.h>
 
 /*
- * Current weather and a 3 day forecast from wttr.in (plain HTTP, metric units).
+ * Current weather and today's high / low from wttr.in (plain HTTP, metric units).
  * Fetched only on request (the Weather app while it is open, or "weather update"), on the
  * net_job queue. A fetch takes about 9 s.
  * Setting (conf.h): weather_location, a city, "lat,lon" or anything wttr.in accepts
  * Shell: weather / weather update
  */
 
-#define WEATHER_DAYS        3
 #define WEATHER_DESC_LEN    32
 #define WEATHER_AREA_LEN    24
 
@@ -26,14 +25,6 @@ typedef enum {
 } weather_kind_t;
 
 typedef struct {
-    int wday;               // 0 = Sunday
-    int max_c;
-    int min_c;
-    int rain;               // highest chance of rain of the day, %
-    weather_kind_t kind;    // weather at noon
-} weather_day_t;
-
-typedef struct {
     uint32_t generation;    // goes up with every successful update
     int64_t updated_ms;     // k_uptime_get() of the update
     int temp_c;
@@ -44,8 +35,8 @@ typedef struct {
     weather_kind_t kind;
     char desc[WEATHER_DESC_LEN];
     char area[WEATHER_AREA_LEN];
-    int day_count;
-    weather_day_t days[WEATHER_DAYS];
+    int max_c;              // today
+    int min_c;
 } weather_t;
 
 typedef enum {

@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "net_job.h"
-#include "net_time.h"
 #include "conf.h"
 #include "weather.h"
 #include "wlan.h"
@@ -18,8 +17,6 @@ LOG_MODULE_REGISTER(weather, CONFIG_CUBE_LOG_LEVEL);
 #define HOST            "wttr.in"
 #define FETCH_TIMEOUT_MS 30000
 #define RETRY_MS        60000   // 失敗之後 weather_request() 等這麼久才再試
-// 中午的天氣代表那一天
-#define NOON            1200
 #define DAY_MAX         BIT(0)
 #define DAY_MIN         BIT(1)
 
@@ -43,14 +40,14 @@ typedef struct {
     // 語意
     section_t section;
     char sub[16];           // 最近進入的陣列 / 物件的 key，例如 "weatherDesc"
-    int day;                // weather 陣列裡第幾天，-1 是還沒開始
-    int hour;               // hourly 裡目前這筆的 time
+    int day;                // weather 陣列裡第幾天，-1 是還沒開始；只用第 0 天（今天）
     // HTTP
     int hdr_state;          // 已經對到 "\r\n\r\n" 的幾個字
     int hdr_len;
     char status[16];        // 第一行的開頭，例如 "HTTP/1.0 200"
     bool got_current;
-    uint8_t day_fields[WEATHER_DAYS];   // 每天收到的欄位，DAY_MAX | DAY_MIN
+    uint8_t day_fields;     // 今天收到的欄位，DAY_MAX | DAY_MIN
+    bool done;              // 需要的都讀完了，後面只剩預報，可以斷線
     size_t body_len;
     weather_t out;
 } parser_t;
@@ -104,17 +101,6 @@ static weather_kind_t kind_from_code(int code)
         // 其他都是各種雨
         return WEATHER_RAIN;
     }
-}
-
-// Tomohiko Sakamoto 的星期公式，0 = 星期日
-static int weekday(int y, int m, int d)
-{
-    static const int t[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-
-    if (m < 3) {
-        y -= 1;
-    }
-    return (y + y / 4 - y / 100 + y / 400 + t[(m - 1) % 12] + d) % 7;
 }
 
 static void copy_trim(char *dst, size_t size, const char *src)
@@ -183,43 +169,24 @@ static void on_pair(parser_t *p, const char *key, const char *value)
         }
         break;
 
-    case SEC_WEATHER: {
+    case SEC_WEATHER:
         if (strcmp(key, "date") == 0) {
             p->day++;
-            if (p->day < WEATHER_DAYS) {
-                int y = 0, m = 0, d = 0;
-                sscanf(value, "%d-%d-%d", &y, &m, &d);
-                memset(&w->days[p->day], 0, sizeof(w->days[0]));
-                w->days[p->day].wday = weekday(y, m, d);
-                w->days[p->day].kind = WEATHER_CLOUDY;
-                w->day_count = p->day + 1;
-            }
+            // 第二天開始了，其他段落也都拿到的話就不用再收後面的預報（j1 裡 weather 排在最後）
+            p->done = p->day > 0 && p->got_current && w->area[0] != '\0';
+        }
+        else if (p->day != 0) {
             break;
         }
-        if (p->day < 0 || p->day >= WEATHER_DAYS) {
-            break;
-        }
-        weather_day_t *day = &w->days[p->day];
-        if (strcmp(key, "maxtempC") == 0) {
-            day->max_c = atoi(value);
-            p->day_fields[p->day] |= DAY_MAX;
+        else if (strcmp(key, "maxtempC") == 0) {
+            w->max_c = atoi(value);
+            p->day_fields |= DAY_MAX;
         }
         else if (strcmp(key, "mintempC") == 0) {
-            day->min_c = atoi(value);
-            p->day_fields[p->day] |= DAY_MIN;
-        }
-        else if (strcmp(key, "time") == 0) {
-            p->hour = atoi(value);
-        }
-        else if (strcmp(key, "chanceofrain") == 0) {
-            day->rain = MAX(day->rain, atoi(value));
-        }
-        // hourly 裡 time 排在 weatherCode 前面
-        else if (strcmp(key, "weatherCode") == 0 && p->hour == NOON) {
-            day->kind = kind_from_code(atoi(value));
+            w->min_c = atoi(value);
+            p->day_fields |= DAY_MIN;
         }
         break;
-    }
 
     default:
         break;
@@ -319,19 +286,6 @@ static void url_encode(char *dst, size_t size, const char *src)
     dst[n] = '\0';
 }
 
-static bool days_complete(const parser_t *p)
-{
-    if (p->out.day_count != WEATHER_DAYS) {
-        return false;
-    }
-    for (int i = 0; i < WEATHER_DAYS; i++) {
-        if (p->day_fields[i] != (DAY_MAX | DAY_MIN)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static int send_all(int fd, const char *buf, size_t len)
 {
     while (len > 0) {
@@ -390,7 +344,6 @@ static int fetch(void)
 
     memset(&parser, 0, sizeof(parser));
     parser.day = -1;
-    parser.hour = -1;
 
     // HTTP/1.0：沒有 Content-Length，讀到對方關閉連線為止
     while (true) {
@@ -418,14 +371,17 @@ static int fetch(void)
             break;
         }
         feed(&parser, rx_buf, n);
+        if (parser.done) {
+            break;
+        }
     }
 
     if (strncmp(parser.status, "HTTP/1.", 7) != 0 || atoi(parser.status + 9) != 200) {
         LOG_WRN("Unexpected reply: %s", parser.status);
         ret = -EPROTO;
     }
-    else if (!parser.got_current || !days_complete(&parser)) {
-        // 連線提早結束時資料會不完整，例如最後一天沒有最高 / 最低溫
+    else if (!parser.got_current || parser.day_fields != (DAY_MAX | DAY_MIN)) {
+        // 連線提早結束時資料會不完整，例如沒有最高 / 最低溫
         LOG_WRN("Incomplete reply (%zu bytes)", parser.body_len);
         ret = -EBADMSG;
     }
@@ -564,11 +520,7 @@ static int _weather_show(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "Now: %d C (feels %d C), %s [%s], humidity %d%%, wind %d km/h %s",
                 w->temp_c, w->feels_c, w->desc, kind_names[w->kind], w->humidity, w->wind_kmph,
                 w->wind_dir);
-    for (int i = 0; i < w->day_count; i++) {
-        const weather_day_t *d = &w->days[i];
-        shell_print(shell, "%s: %d / %d C, %s, rain %d%%", net_time_wday_names[d->wday], d->max_c, d->min_c,
-                    kind_names[d->kind], d->rain);
-    }
+    shell_print(shell, "Today: %d / %d C", w->max_c, w->min_c);
     return 0;
 }
 

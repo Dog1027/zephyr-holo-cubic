@@ -107,12 +107,7 @@ static void show_data(weather_page_t *v)
     lv_label_set_text(v->area, w->area);
     lv_label_set_text_fmt(v->temp, "%d°", w->temp_c);
     lv_label_set_text(v->desc, w->desc);
-    if (w->day_count > 0) {
-        lv_label_set_text_fmt(v->range, "%d° / %d°", w->days[0].max_c, w->days[0].min_c);
-    }
-    else {
-        lv_label_set_text(v->range, "");
-    }
+    lv_label_set_text_fmt(v->range, "%d° / %d°", w->max_c, w->min_c);
 }
 
 // 沒有資料時在中間顯示原因；有資料時就不顯示狀態（舊資料在背景更新）
