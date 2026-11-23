@@ -6,7 +6,8 @@
 #include <math.h>
 
 #define TIMER_ACCENT_COLOR  THEME_RED
-#define TIMER_ARC_SIZE      196
+#define TIMER_ARC_SIZE      168
+#define TIMER_ARC_Y         (-18)   // 圓環往上一點，下緣不碰到分鐘選項
 #define TIMER_FACE_DOWN_DEG 150.0f  // |roll| 超過這個角度表示螢幕朝下
 #define TIMER_BLINK_MS      250
 #define TIMER_BLINK_COUNT   12
@@ -23,7 +24,6 @@ static bool styles_inited;
 typedef struct {
     lv_obj_t *arc;
     lv_obj_t *time_label;
-    lv_obj_t *state_label;
     lv_obj_t *chips;
     lv_obj_t *tap_area;
     int32_t shown_sec;
@@ -109,13 +109,6 @@ static void time_show(uint32_t ms, bool force)
 
 static void state_set(timer_state_t new_state)
 {
-    static const char *const text[] = {
-        [STATE_SET] = "Up / down to pick, OK to start",
-        [STATE_RUNNING] = "OK, tap or face down to pause",
-        [STATE_PAUSED] = "Paused, OK or tap to resume",
-        [STATE_DONE] = "Done! OK or tap to reset",
-    };
-
     // 狀態相同時只更新畫面 (例如重新開啟 app)，不要重新計時
     switch (new_state == state ? -1 : (int)new_state) {
     case STATE_RUNNING:
@@ -139,7 +132,9 @@ static void state_set(timer_state_t new_state)
     }
     state = new_state;
 
-    lv_label_set_text(self->state_label, text[state]);
+    // 沒有說明文字（小字透過稜鏡看不清楚）：暫停時時間變成 TIMER_ACCENT_COLOR
+    lv_obj_set_style_text_color(self->time_label,
+                                lv_color_hex(state == STATE_PAUSED ? TIMER_ACCENT_COLOR : THEME_TEXT), 0);
     if (state == STATE_SET) {
         lv_obj_set_hidden(self->chips, false);
         lv_group_remove_obj(self->tap_area);
@@ -212,7 +207,7 @@ static void app_timer_init(void *scr)
 
     self->arc = lv_arc_create(scr);
     lv_obj_set_size(self->arc, TIMER_ARC_SIZE, TIMER_ARC_SIZE);
-    lv_obj_center(self->arc);
+    lv_obj_align(self->arc, LV_ALIGN_CENTER, 0, TIMER_ARC_Y);
     lv_arc_set_rotation(self->arc, 270);
     lv_arc_set_bg_angles(self->arc, 0, 360);
     lv_arc_set_range(self->arc, 0, 1000);
@@ -226,15 +221,7 @@ static void app_timer_init(void *scr)
     self->time_label = lv_label_create(scr);
     lv_obj_set_style_text_font(self->time_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(self->time_label, lv_color_hex(THEME_TEXT), 0);
-    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, -10);
-
-    self->state_label = lv_label_create(scr);
-    lv_obj_set_width(self->state_label, 200);
-    lv_label_set_long_mode(self->state_label, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_style_text_align(self->state_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(self->state_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(self->state_label, lv_color_hex(THEME_TEXT), 0);
-    lv_obj_align(self->state_label, LV_ALIGN_CENTER, 0, 34);
+    lv_obj_align(self->time_label, LV_ALIGN_CENTER, 0, TIMER_ARC_Y);
 
     self->tap_area = ui_tap_area(scr, tap_cb, NULL);
     lv_group_remove_obj(self->tap_area);

@@ -12,7 +12,7 @@
  */
 
 #define CLOCK_ACCENT_COLOR  THEME_CYAN
-#define CLOCK_ARC_SIZE      196
+#define CLOCK_ARC_SIZE      180     // 中心在分頁籤下面那塊的中間，上緣離分頁籤留 8 px
 #define CLOCK_ARC_WIDTH     6
 #define CLOCK_ARC_STEP_MS   50  // 圓環每這麼久前進一點（一步約 0.6 px），文字還是一秒更新一次
 

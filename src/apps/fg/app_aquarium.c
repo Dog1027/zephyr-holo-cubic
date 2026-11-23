@@ -77,8 +77,17 @@ static const species_info_t species_info[AQUA_SPECIES_COUNT] = {
     [AQUA_WATER_BEAR] = {4.0f, 1.20f, true},
 };
 
-static const uint32_t jelly_colors[] = {THEME_CYAN, THEME_PURPLE, THEME_BLUE, THEME_TEXT};
-static const uint32_t microbe_colors[] = {THEME_GREEN, THEME_ORANGE, THEME_YELLOW, THEME_RED, THEME_PURPLE, THEME_CYAN};
+// 透過稜鏡只有接近白色的看得清楚：都是很淡的顏色，只帶一點色調
+#define AQUA_TINT_CYAN      0xD8FAFF
+#define AQUA_TINT_PURPLE    0xEEDDFF
+#define AQUA_TINT_BLUE      0xDDE8FF
+#define AQUA_TINT_GREEN     0xE0FFE4
+#define AQUA_TINT_ORANGE    0xFFE8D4
+#define AQUA_TINT_YELLOW    0xFFF8D0
+#define AQUA_TINT_PINK      0xFFDDE6
+static const uint32_t jelly_colors[] = {AQUA_TINT_CYAN, AQUA_TINT_PURPLE, AQUA_TINT_BLUE, THEME_TEXT};
+static const uint32_t microbe_colors[] = {AQUA_TINT_GREEN, AQUA_TINT_ORANGE, AQUA_TINT_YELLOW, AQUA_TINT_PINK,
+                                          AQUA_TINT_PURPLE, AQUA_TINT_CYAN};
 
 static float frand(float lo, float hi)
 {
@@ -309,7 +318,7 @@ static void app_aquarium_init(void *scr)
         lv_obj_remove_style_all(obj);
         lv_obj_set_size(obj, AQUA_FOOD_SIZE, AQUA_FOOD_SIZE);
         lv_obj_set_style_radius(obj, LV_RADIUS_CIRCLE, 0);
-        lv_obj_set_style_bg_color(obj, lv_color_hex(THEME_YELLOW), 0);
+        lv_obj_set_style_bg_color(obj, lv_color_hex(AQUA_TINT_YELLOW), 0);
         lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
         lv_obj_set_hidden(obj, true);
         self->food[i].obj = obj;
