@@ -3,6 +3,7 @@
 #include "app_mgr.h"
 #include "nav.h"
 #include "gui.h"
+#include "screenshot.h"
 #include <lvgl.h>
 #include <string.h>
 
@@ -142,6 +143,7 @@ static void app_thread_entry(void *arg1, void *arg2, void *arg3)
     #if IS_ENABLED(CONFIG_APP_THREAD_SHOW_FPS)
         _draw_fps(sleep_ms);
     #endif
+        screenshot_process();
         sleep_ms = lv_timer_handler();
         if (sleep_ms == LV_NO_TIMER_READY) {
             sleep_ms = CONFIG_APP_THREAD_MAX_SLEEP_MS;

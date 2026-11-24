@@ -42,6 +42,11 @@ cast host *args:
 test-share:
     {{python}} {{topdir}}/tools/share_test.py {{port}}
 
+# Save the screen as a PNG: just shot OUT.png ["shell command" ...] (close any serial monitor first)
+[positional-arguments]
+shot out *commands:
+    {{python}} {{topdir}}/tools/screenshot.py {{port}} "$@"
+
 # Reset the board, open and close every app over the shell, report errors and stack usage (close any serial monitor first)
 test:
     {{python}} {{topdir}}/tools/serial_test.py {{port}} {{build_dir}}/serial_test.log

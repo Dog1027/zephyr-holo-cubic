@@ -10,6 +10,26 @@
 
 開機後是橫向輪播的 Menu。
 
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/menu.png" width="160"><br>Menu</td>
+<td align="center"><img src="docs/screenshots/clock.png" width="160"><br>Clock</td>
+<td align="center"><img src="docs/screenshots/files.png" width="160"><br>Files</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/system.png" width="160"><br>System</td>
+<td align="center"><img src="docs/screenshots/dice.png" width="160"><br>Dice</td>
+<td align="center"><img src="docs/screenshots/timer.png" width="160"><br>Timer</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/light.png" width="160"><br>Light</td>
+<td align="center"><img src="docs/screenshots/level.png" width="160"><br>Level</td>
+<td align="center"><img src="docs/screenshots/aquarium.png" width="160"><br>Aquarium</td>
+</tr>
+</table>
+
+截圖是螢幕上的原始畫面，透過稜鏡看會比較暗、比較糊。重截用 `just shot`。
+
 | App | 說明 |
 |---|---|
 | Clock | 網路對時的時鐘；WEATHER 分頁是目前天氣和今天的最高 / 最低溫（wttr.in） |
@@ -51,6 +71,7 @@ just flash      # 燒錄
 just monitor    # 序列埠 console（Ctrl+] 離開）
 just test       # 重置後自動開關每個 app，回報錯誤和 stack 用量
 just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
+just shot clock.png "app open Clock"   # 截圖存成 PNG，後面是截圖前要送的指令
 ```
 
 燒錄和測試會用到序列埠，要先關掉 monitor。序列埠預設是 CP2102 的固定路徑，換埠用 `just port=/dev/ttyUSB0 flash`。

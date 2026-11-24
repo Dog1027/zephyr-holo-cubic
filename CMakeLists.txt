@@ -20,6 +20,7 @@ target_sources(app PRIVATE
   src/ui.c
   src/ui_tabs.c
   src/ui_wheel.c
+  src/screenshot.c
   src/icons.c
   src/jpeg.c
   src/led.c
