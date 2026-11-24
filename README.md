@@ -1,14 +1,16 @@
 # ZephyrHoloCubic
 
-用 Zephyr RTOS 和 LVGL 做的 HoloCubic 風格小螢幕裝置：ESP32 驅動一塊 240x240 的 ST7789 螢幕，畫面透過上方的分光稜鏡觀看，另有 SD 卡、MPU6050 姿態感測器和一顆 WS2812 RGB LED。
+English | [繁體中文](README.zh-TW.md)
 
-操作透過 USB 序列埠的 shell 指令，或敲一下裝置。
+A HoloCubic-style desk gadget built on Zephyr RTOS and LVGL: an ESP32 drives a 240x240 ST7789 screen viewed through a beam-splitter prism on top, plus an SD card, an MPU6050 motion sensor and one WS2812 RGB LED.
 
-細節以程式為準，這份文件只寫不容易從程式看出來的事：各模組的用法在 `include/*.h` 開頭的註解，指令清單用 shell 的 `help`，建置指令用 `just`。
+You control it with shell commands over the USB serial port, or by tapping the cube.
 
-## App
+The code is the reference; this document only covers what is hard to see from the code. Each module's usage is in the comment at the top of `include/*.h`, the shell's `help` lists the commands, and `just` lists the build recipes.
 
-開機後是橫向輪播的 Menu。
+## Apps
+
+After boot you get the Menu, a horizontal carousel.
 
 <table>
 <tr>
@@ -28,133 +30,133 @@
 </tr>
 </table>
 
-截圖是螢幕上的原始畫面，透過稜鏡看會比較暗、比較糊。重截用 `just shot`。
+The screenshots are the raw screen; through the prism it looks darker and softer. Take new ones with `just shot`.
 
-| App | 說明 |
+| App | What it does |
 |---|---|
-| Clock | 網路對時的時鐘；WEATHER 分頁是目前天氣和今天的最高 / 最低溫（wttr.in） |
-| Files | FILES 分頁瀏覽 SD 卡（點檔案看大小）；SHARE 分頁是網頁版的檔案管理 |
-| Gallery | PHOTOS 分頁：`/photo/` 裡的相片，可自動輪播；ANIM 分頁：播放 `/anim/<名稱>/` 裡的 JPEG 序列 |
-| Level | 水平儀 |
-| Dice | 骰子，以及從 `/lots.txt` 抽籤 |
-| Light | 用 RGB LED 當氣氛燈 |
-| Timer | 計時器，翻面朝下暫停 |
-| System | SYSTEM 分頁：heap、SD 卡、每個 thread 的 stack 用量；WI-FI 分頁：訊號強度、IP、附近的網路。一次顯示一項，上下換項目 |
-| Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上 |
-| Aquarium | 水母和微生物，敲一下或 OK 撒飼料 |
-| Test | 空的 app，測試新功能用 |
+| Clock | Network-synced clock; the WEATHER tab shows the current weather and today's high / low (wttr.in) |
+| Files | The FILES tab browses the SD card (select a file to see its size); the SHARE tab is a web file manager |
+| Gallery | PHOTOS tab: photos in `/photo/`, with an optional slideshow; ANIM tab: plays the JPEG sequences in `/anim/<name>/` |
+| Level | Spirit level |
+| Dice | A die, and drawing lots from `/lots.txt` |
+| Light | Uses the RGB LED as a mood light |
+| Timer | Countdown timer; turn the cube face down to pause |
+| System | SYSTEM tab: heap, SD card, stack usage of every thread; WI-FI tab: signal strength, IP, nearby networks. One item at a time, up / down to move |
+| Cast | Shows images, GIFs or your screen from a computer on the cube |
+| Aquarium | Jellyfish and microbes; tap or OK to feed them |
+| Test | An empty app for trying out new features |
 
-## 硬體
+## Hardware
 
-| 元件 | 介面 | 腳位 |
+| Part | Bus | Pins |
 |---|---|---|
-| ESP32（PICO-D4，沒有 PSRAM） | | 板子：`esp32_devkitc/esp32/procpu` |
-| ST7789V 240x240 螢幕 | SPI3（DMA） | SCLK 18、MOSI 23、DC 2、RST 4、背光 5（低電位點亮，只有開關） |
-| SD 卡 | SPI2 | SCLK 14、MOSI 13、MISO 26、CS 15 |
-| MPU6050 | I2C0，0x68 | SDA 32、SCL 33 |
+| ESP32 (PICO-D4, no PSRAM) | | Board: `esp32_devkitc/esp32/procpu` |
+| ST7789V 240x240 screen | SPI3 (DMA) | SCLK 18, MOSI 23, DC 2, RST 4, backlight 5 (active low, on / off only) |
+| SD card | SPI2 | SCLK 14, MOSI 13, MISO 26, CS 15 |
+| MPU6050 | I2C0, 0x68 | SDA 32, SCL 33 |
 | WS2812 RGB LED | I2S0 | DATA 27 |
 
-腳位定義在 [boards/esp32_devkitc_procpu.overlay](boards/esp32_devkitc_procpu.overlay)。
+Pins are defined in [boards/esp32_devkitc_procpu.overlay](boards/esp32_devkitc_procpu.overlay).
 
-## 編譯與燒錄
+## Build and flash
 
-需要：
+You need:
 
-- 一個 Zephyr west workspace（預設在 `~/Projects/zephyrproject`，其他位置用環境變數 `ZEPHYR_WORKSPACE` 指定）和 Zephyr SDK。目前用的是 Zephyr main（4.5 開發版）和 SDK 1.0.1。
-- Espressif 的 Wi-Fi blob：在 workspace 裡執行 `west blobs fetch hal_espressif`。
-- [just](https://just.systems) 和 [uv](https://docs.astral.sh/uv/)。電腦端的工具（`tools/*.py`）用這個專案自己的 uv 環境，不用另外安裝。
+- A Zephyr west workspace (`~/Projects/zephyrproject` by default; set `ZEPHYR_WORKSPACE` for another location) and the Zephyr SDK. Currently Zephyr main (4.5 development) and SDK 1.0.1.
+- Espressif's Wi-Fi blobs: run `west blobs fetch hal_espressif` in the workspace.
+- [just](https://just.systems) and [uv](https://docs.astral.sh/uv/). The host tools (`tools/*.py`) run in this project's own uv environment; nothing else to install.
 
 ```bash
-just            # 列出所有指令
-just build      # 編譯
-just flash      # 燒錄
-just monitor    # 序列埠 console（Ctrl+] 離開）
-just test       # 重置後自動開關每個 app，回報錯誤和 stack 用量
-just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
-just shot clock.png "app open Clock"   # 截圖存成 PNG，後面是截圖前要送的指令
+just            # list all recipes
+just build      # build
+just flash      # flash
+just monitor    # serial console (Ctrl+] to quit)
+just test       # reset, open and close every app, report errors and stack usage
+just test-share # test the Files app's SHARE tab on the device (needs Wi-Fi)
+just shot clock.png "app open Clock"   # save the screen as a PNG; the rest are commands sent first
 ```
 
-燒錄和測試會用到序列埠，要先關掉 monitor。序列埠預設是 CP2102 的固定路徑，換埠用 `just port=/dev/ttyUSB0 flash`。
+Flashing and the tests use the serial port, so close the monitor first. The port defaults to the CP2102's fixed path; use another with `just port=/dev/ttyUSB0 flash`.
 
-## 操作
+## Usage
 
-在 `just monitor` 裡輸入指令，`help` 會列出全部，常用的：
+Type commands in `just monitor`; `help` lists them all. The common ones:
 
 ```
 app list / app open Gallery / app close
 ui next / ui prev / ui ok / ui back / ui tap
-ui up / ui down / ui left / ui right    app 沒用到方向時，上左等於 prev、下右等於 next
-ui remote             遙控模式：方向鍵或 wasd、Enter、e（敲一下）、q（返回）、Ctrl+C 離開
-wlan set SSID [PSK]   設定 Wi-Fi 並連線
+ui up / ui down / ui left / ui right    when an app does not use a direction, up / left act as prev, down / right as next
+ui remote             remote mode: arrow keys or wasd, Enter, e (tap), q (back), Ctrl+C to quit
+wlan set SSID [PSK]   set up Wi-Fi and connect
 wlan status / wlan scan / wlan forget
-config list           所有設定
+config list           all settings
 ```
 
-所有 app 的操作規則相同：**上下選擇，左右切分頁，OK 確定，敲一下是主要動作**（擲骰、撒飼料、開始計時、換燈色、下一張相片……）。方塊本身只能敲，其他都要接序列埠。敲一下在 Menu 沒有作用；app 沒處理時等於 `ui next`。
+Every app follows the same rules: **up / down to choose, left / right to switch tabs, OK to confirm, tap for the main action** (roll the die, feed the fish, start the timer, change the light, next photo…). The cube itself can only be tapped; everything else needs the serial port. Tapping does nothing in the Menu; in an app that does not handle it, a tap is `ui next`.
 
-## 設定
+## Settings
 
-設定存在 flash，不插 SD 卡也有效，重新燒錄不會消失。
+Settings live in flash: they work without an SD card and survive reflashing.
 
-| Key | 說明 | 沒設定時 |
+| Key | Meaning | When unset |
 |---|---|---|
-| `wifi_ssid` | Wi-Fi 名稱（只支援 2.4 GHz） | 不連網路 |
-| `wifi_psk` | Wi-Fi 密碼，8 到 64 個字元 | 當成開放網路 |
-| `tz` | 時區，例如 `+8`、`-5`、`+5:30` | `+8` |
-| `ntp_server` | 對時用的 NTP server | `pool.ntp.org` |
-| `weather_location` | 城市名或 `緯度,經度` | 依 IP 判斷 |
+| `wifi_ssid` | Wi-Fi network name (2.4 GHz only) | No network |
+| `wifi_psk` | Wi-Fi password, 8 to 64 characters | Treated as an open network |
+| `tz` | Time zone, e.g. `+8`, `-5`, `+5:30` | `+8` |
+| `ntp_server` | NTP server for the clock | `pool.ntp.org` |
+| `weather_location` | City name or `latitude,longitude` | Guessed from your IP |
 
-兩種改法：
+Two ways to change them:
 
-- **shell**：`config set tz +9`、`config unset tz`，Wi-Fi 用 `wlan set`。馬上生效。
-- **SD 卡上的 `/config.txt`**，一行一個 `key=value`，在電腦上編輯或用 Share 上傳。這個檔只用來**匯入**：開機時和 Share 存好它的時候，認得的 key 會存進 flash 並從檔案刪掉，所以匯入後檔案會變空，密碼不留在卡上。格式不對的行會留在檔案裡，log 有 warning。
+- **Shell**: `config set tz +9`, `config unset tz`; for Wi-Fi use `wlan set`. Takes effect immediately.
+- **`/config.txt` on the SD card**, one `key=value` per line, edited on a computer or uploaded with Share. This file is only for **importing**: at boot, and when Share saves it, recognised keys are stored in flash and removed from the file, so it ends up empty and no password stays on the card. Malformed lines stay in the file with a warning in the log.
 
-要讓方塊忘記網路用 `wlan forget`，把方塊交給別人前記得做。
+To make the cube forget the network, use `wlan forget` — do this before giving the cube to someone else.
 
-## SD 卡內容
+## SD card
 
-SD 卡要格式化成 FAT32。
+Format the SD card as FAT32.
 
 ```
-/photo/*.jpg            Gallery 的相片
-/anim/<名稱>/000.jpg…   每個動畫一個資料夾，編號不能缺號；選用的 delay.txt 是每格毫秒數
-/lots.txt               抽籤清單，一行一項（只支援英數字）
+/photo/*.jpg            Gallery's photos
+/anim/<name>/000.jpg…   one folder per animation, numbered without gaps; an optional delay.txt holds the milliseconds per frame
+/lots.txt               list for drawing lots, one per line (letters and digits only)
 ```
 
-圖片必須是 **baseline JPEG**，不超過 240x240。一般軟體存的 JPEG 常解不出來，先用附的工具轉檔：
+Images must be **baseline JPEG**, at most 240x240. JPEGs saved by ordinary software often fail to decode, so convert them with the included tools first:
 
 ```bash
-just img2jpg ~/Pictures out/photo     # 轉檔後自己複製到卡上
-just gif2jpg cat.gif out/cat          # GIF 轉成動畫資料夾
+just img2jpg ~/Pictures out/photo     # convert, then copy to the card yourself
+just gif2jpg cat.gif out/cat          # turn a GIF into an animation folder
 ```
 
-照片也可以不轉檔，直接用 Share 的網頁上傳到 `photo` 資料夾，瀏覽器會自動縮圖轉檔。
+You can also skip converting photos: upload them to the `photo` folder through Share's web page, and the browser shrinks and converts them.
 
 ### Share
 
-打開 Files 切到 SHARE 分頁，畫面會顯示網址和 4 位數 PIN（只有這一頁開著時才提供服務）。用瀏覽器打開網址、輸入 PIN，就能瀏覽、上傳、下載、刪除和建立資料夾。
+Open Files and switch to the SHARE tab; the screen shows an address and a 4-digit PIN (the server only runs while this tab is open). Open the address in a browser and enter the PIN to browse, upload, download, delete and create folders.
 
-- PIN 是固定的，在 SHARE 分頁按 OK 換一組（敲一下不會換）。連錯幾次會暫時鎖住。
-- 檔名只能用英數字、空白和 `._-+()`。
-- 一次只服務一個連線，速度是幾十 KB/s。
-- 有 PIN 的人可以上傳 `/config.txt` 改設定，所以只在信任的網路上打開。
-- 也可以用 curl：`curl -b pin=1234 -T cat.jpg http://<IP>/photo/`，其他用法見 `src/apps/fg/app_share.c` 開頭。
+- The PIN stays the same; press OK on the SHARE tab for a new one (a tap does not change it). Too many wrong PINs lock it for a while.
+- File names may only use letters, digits, spaces and `._-+()`.
+- It serves one connection at a time, at a few tens of KB/s.
+- Anyone with the PIN can upload `/config.txt` and change the settings, so only open it on networks you trust.
+- curl works too: `curl -b pin=1234 -T cat.jpg http://<IP>/photo/`; more in the comment at the top of `src/apps/fg/share_page.c`.
 
 ### Cast
 
-打開 Cast，畫面會顯示位址，然後在電腦上：
+Open Cast, which shows its address, then on the computer:
 
 ```bash
 just cast <IP> cat.gif
 just cast <IP> ~/Pictures --hold 5
-just cast <IP> --screen               # 只支援 X11
+just cast <IP> --screen               # X11 only
 ```
 
-每秒幾格，尺寸越小越順（`--size 160x160`）。其他選項：`just cast <IP> --help`。
+It runs at a few frames per second; smaller is smoother (`--size 160x160`). More options: `just cast <IP> --help`.
 
-## 新增 app
+## Adding an app
 
-在 `src/apps/fg/` 新增一個檔案，並加進 [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt)：
+Add a file to `src/apps/fg/` and list it in [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt):
 
 ```c
 #include "fg_app.h"
@@ -165,7 +167,7 @@ typedef struct {
     uint32_t shown;
 } self_t;
 
-// 名稱、Menu 圖示、三個 callback、在 Menu 的順序（每個 app 不同，不能是 0）、狀態的型別
+// Name, Menu icon, three callbacks, position in the Menu (unique per app, not 0), state type
 APP_FG_REGISTER(Uptime, ICON_TIMER, app_uptime_init, app_uptime_run, app_uptime_exit, 20, self_t);
 
 static void app_uptime_init(void *scr)
@@ -190,49 +192,49 @@ static void app_uptime_exit(void *scr)
 }
 ```
 
-規則：
+Rules:
 
-- **`init`** 每次開啟都會呼叫，畫面是空的。**`run`** 每一幀呼叫一次，不能阻塞。**`exit`** 釋放自己配置的資源，畫面上的物件由框架刪除。LVGL 只能在這三個 callback 裡呼叫。
-- **狀態放在 `self_t`**，用 `self->` 存取，不要寫成 `static`。所有前景 app 共用同一塊記憶體，`init` 之前會清成 0，`exit` 之後不能再用。放不下時 build 會失敗，再調大 `CONFIG_APP_STATE_SIZE`。只有離開 app 後還要保留的東西才用 `static`，並註明原因。
-- **會等待的工作不能放在 `run`**：DNS、HTTP 這類丟到 `net_job_queue()`，app 只讀結果。只在 app 開著時需要的 server 用 `net_server.h` 的 non-blocking socket。
-- **顏色用 `theme.h`**，不要寫色碼。**透過稜鏡看，小字和非白色的字都看不清楚**：要讀的文字一律 `THEME_TEXT`、至少 18 px（Montserrat 18 / 28 / 48，不要再加別的大小），顏色只用在大字、色塊和反白。說明、單位這類小字寧可拿掉。
-- **操作照同一套規則**：上下選擇，OK 確定，敲一下（`NAV_TAP`）做這個 app 最主要的事，方塊沒接電腦時只靠它。有好幾頁的 app 用 `ui_tabs.h`（Dice、Clock、System、Files、Gallery），左右 / next / prev 切分頁由它處理。
-- **先找現成的**：`ui.h`（標籤、清單）、`nav.h`（自己處理 next / prev / ok / 敲擊）、`prefs.h`（重開機後保留的值）、`conf.h`（使用者設定）、`jpeg.h`（顯示 JPEG）、`led.h`、`file.h`。
-- **圖示**：在 `tools/mkicons.py` 的清單加一行後重新執行，用法在檔案開頭。
+- **`init`** runs every time the app opens, on an empty screen. **`run`** runs once per frame and must not block. **`exit`** frees what the app allocated; the framework deletes the objects on screen. Call LVGL only from these three callbacks.
+- **Keep state in `self_t`** and use it through `self->`, not in `static` variables. All foreground apps share one block of memory: it is zeroed before `init` and must not be used after `exit`. If it does not fit, the build fails; raise `CONFIG_APP_STATE_SIZE`. Use `static` only for what must outlive the app, and say why in a comment.
+- **Nothing that waits goes in `run`**: hand DNS, HTTP and the like to `net_job_queue()` and only read the result in the app. A server needed only while the app is open uses the non-blocking sockets in `net_server.h`.
+- **Take colours from `theme.h`**, never hard-coded values. **Through the prism, small text and non-white text are hard to read**: text meant to be read is always `THEME_TEXT` and at least 18 px (Montserrat 18 / 28 / 48 — do not add other sizes); use colour only for large text, solid shapes and highlights. Small graphics should be near-white too. Drop hints, units and other small text rather than keep them.
+- **Follow the shared input rules**: up / down to choose, OK to confirm, a tap (`NAV_TAP`) does the app's main thing — it is all the cube has without a computer. Apps with several pages use `ui_tabs.h` (Dice, Clock, System, Files, Gallery), which handles left / right / next / prev to switch tabs.
+- **Look for what exists first**: `ui.h` (labels, lists), `nav.h` (handle next / prev / ok / tap yourself), `prefs.h` (values kept across reboots), `conf.h` (user settings), `jpeg.h` (show a JPEG), `led.h`, `file.h`.
+- **Icons**: add a line to the list in `tools/mkicons.py` and run it again; usage is at the top of the file.
 
-## 專案結構
+## Project layout
 
 ```
-boards/         硬體與腳位（devicetree overlay）
-prj.conf        Kconfig 設定和調整的原因
-include/        各模組的介面和用法說明
-src/            框架與共用模組
+boards/         hardware and pins (devicetree overlay)
+prj.conf        Kconfig settings and why they were tuned
+include/        module interfaces and how to use them
+src/            framework and shared modules
 src/apps/bg/    Menu
-src/apps/fg/    各個 app
+src/apps/fg/    the apps
 src/lib/tjpgd/  TJpgDec
-tools/          電腦端的工具：轉檔、投影、圖示字型、實機測試
+tools/          host tools: converters, casting, icon font, on-device tests
 ```
 
-## 注意事項
+## Pitfalls
 
-開發過程中踩到的問題，修改相關部分前請先看：
+Problems found during development — read before changing the related parts:
 
-- **畫面鏡像**：overlay 的 `mdac = <0x40>` 是左右鏡像，給透過稜鏡觀看用。上下顛倒時的改法寫在 overlay 的註解裡。
-- **只能一條 SPI 開 DMA**：兩條 SPI 共用 DMA 時脈，第二條會初始化失敗，所以只有螢幕開 DMA。
-- **SD 卡的 SPI 不能超過 20 MHz**：MISO 在 GPIO 26，要經過 GPIO 矩陣。
-- **I2C 維持 100 kHz**：板子上沒有外部上拉，靠 ESP32 的內建上拉（`src/i2c_pullup.c`）。GPIO 32/33 是 RTC pad，pinctrl 的上拉設定對它們沒有作用。
-- **重置後 IMU 可能讀不到**：MPU6050 不會跟著重置，可能卡在讀取途中拉著 SDA，所以開機時先做 bus recovery。
-- **不要在 `SYS_INIT` 裡繪圖**：LVGL 的 flush thread 要等所有 `SYS_INIT` 結束才啟動，在那之前繪圖會讓開機卡死。
-- **RAM 很緊**：兩個 DRAM 區域各只剩幾 KB，build 最後會印出用量。heap、buffer 和 stack 的大小都是照實測調的（`prj.conf` 有註解，shell 的 `kernel heap` 和 `kernel thread stacks` 可以量）。大塊的 buffer 加 `__noinit` 放到 region 1；只有某個 app 開著才需要的放進它的 `self_t`。
-- **只能用 HTTP**：TLS 需要的記憶體放不下。回應太大時要邊收邊解析，像 `weather.c`。
-- **socket 很少**：server 主動斷線的連線會暫時佔著一個，所以 Share 盡量讓對方先斷線。
-- **Wi-Fi 不省電**：省電模式會讓傳輸速度掉一半。
-- **剛連上網路時 DNS 可能沒回應**：短時間內重新連線時偶爾發生，是網路端的行為，靠重試處理。`just test` 偶爾會因此出現一筆 SNTP 或 weather 的 warning。
-- **LED 偶爾寫入失敗**：ws2812 driver 在只有一顆 LED 時的時序問題，`led.c` 會重送。
-- **編譯器 bug**：SDK 1.0.1 的 Xtensa GCC 會把 TJpgDec 的一段迴圈編錯，解碼時當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
-- **`just test` 不會解碼 JPEG**：除非卡上有照片。改到 JPEG 相關的程式後，要實際開 Gallery 或用 Cast 確認。
-- **字型**：內建的 Montserrat 不含中文。
+- **Mirrored screen**: `mdac = <0x40>` in the overlay mirrors left and right for viewing through the prism. How to fix an upside-down image is in the overlay's comments.
+- **Only one SPI bus can use DMA**: both buses share the DMA clock and the second fails to initialise, so only the screen uses DMA.
+- **The SD card's SPI must stay at or below 20 MHz**: MISO is on GPIO 26, which goes through the GPIO matrix.
+- **Keep I2C at 100 kHz**: the board has no external pull-ups and relies on the ESP32's internal ones (`src/i2c_pullup.c`). GPIO 32/33 are RTC pads, where the pinctrl pull-up setting has no effect.
+- **The IMU may not answer after a reset**: the MPU6050 is not reset with the ESP32 and can be stuck mid-read holding SDA low, so boot starts with a bus recovery.
+- **Do not draw in `SYS_INIT`**: LVGL's flush thread only starts after every `SYS_INIT` has finished; drawing before then hangs the boot.
+- **RAM is tight**: both DRAM regions have only a few KB left; the build prints the usage at the end. Heap, buffer and stack sizes are tuned from measurements (commented in `prj.conf`; measure with the shell's `kernel heap` and `kernel thread stacks`). Put large buffers in region 1 with `__noinit`; put what only one app needs in that app's `self_t`.
+- **HTTP only**: TLS needs more memory than there is. Parse large responses while receiving them, like `weather.c`.
+- **Few sockets**: a connection the server closes first holds a socket for a while, so Share lets the client close first whenever it can.
+- **No Wi-Fi power saving**: power-save mode halves the transfer speed.
+- **DNS may not answer right after connecting**: it sometimes happens when reconnecting soon after a disconnect; it is the network's behaviour and is handled by retrying. Because of it, `just test` sometimes reports an SNTP or weather warning.
+- **LED writes sometimes fail**: a timing issue in the ws2812 driver with a single LED; `led.c` resends.
+- **Compiler bug**: SDK 1.0.1's Xtensa GCC miscompiles a loop in TJpgDec and the decoder crashes. That part of `src/lib/tjpgd/tjpgd.c` is rewritten; keep the rewrite when updating TJpgDec.
+- **`just test` may not decode any JPEG**: it only does if Gallery opens on its PHOTOS tab with photos on the card. After changing anything JPEG-related, open Gallery or use Cast to check. Screenshots cannot capture JPEGs either, since they are drawn straight to the screen.
+- **Fonts**: the built-in Montserrat has no CJK characters.
 
-## 授權
+## License
 
-`src/lib/tjpgd/` 是 ChaN 的 TJpgDec，授權見 [src/lib/tjpgd/LICENSE.txt](src/lib/tjpgd/LICENSE.txt)。App 圖示來自 Material Design Icons（Apache 2.0）。
+`src/lib/tjpgd/` is ChaN's TJpgDec; see [src/lib/tjpgd/LICENSE.txt](src/lib/tjpgd/LICENSE.txt) for its license. App icons are from Material Design Icons (Apache 2.0).
