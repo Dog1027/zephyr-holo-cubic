@@ -7,7 +7,9 @@
 #   west update
 #   west blobs fetch
 #
-# Add other HAL modules to name-allowlist when targeting other SoCs.
+# Modules this app uses: hal_espressif (ESP32 HAL + Wi-Fi blobs), lvgl (GUI), fatfs (SD card),
+# mbedtls + tf-psa-crypto (the ESP32 Wi-Fi driver selects MBEDTLS / PSA_CRYPTO).
+# A missing module shows up as a Kconfig dependency "0" warning; add it here.
 
 manifest:
   remotes:
@@ -22,3 +24,7 @@ manifest:
       import:
         name-allowlist:
           - hal_espressif
+          - lvgl
+          - fatfs
+          - mbedtls
+          - tf-psa-crypto
