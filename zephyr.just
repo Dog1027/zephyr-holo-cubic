@@ -7,9 +7,9 @@
 set shell := ["bash", "-c"]
 
 topdir     := justfile_directory()
-workspace  := env("ZEPHYR_WORKSPACE", home_directory() / "Projects/zephyrproject")
+app_dir    := topdir / "app"
 build_dir  := topdir / "build"
-west       := "cd " + workspace + " && uv run west"
+west       := "west"
 
 board      := "native_sim"
 build_args := ""
@@ -25,14 +25,14 @@ check-env:
 
 # Build (extra args pass through, e.g. `just build -p`)
 build *args: check-env
-    {{west}} build -b {{board}} -d {{build_dir}} {{topdir}} {{build_args}} {{args}}
+    {{west}} build -b {{board}} -d {{build_dir}} {{app_dir}} {{build_args}} {{args}}
 
 # Pristine rebuild
 rebuild: (build "-p")
 
 # Open menuconfig
 config: check-env
-    {{west}} build -b {{board}} -d {{build_dir}} -t menuconfig {{topdir}}
+    {{west}} build -b {{board}} -d {{build_dir}} -t menuconfig {{app_dir}}
 
 # Flash the connected device
 flash: check-env

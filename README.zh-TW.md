@@ -6,7 +6,7 @@
 
 操作透過 USB 序列埠的 shell 指令，或敲一下裝置。
 
-細節以程式為準，這份文件只寫不容易從程式看出來的事：各模組的用法在 `include/*.h` 開頭的註解，指令清單用 shell 的 `help`，建置指令用 `just`。
+細節以程式為準，這份文件只寫不容易從程式看出來的事：各模組的用法在 `app/include/*.h` 開頭的註解，指令清單用 shell 的 `help`，建置指令用 `just`。
 
 ## App
 
@@ -56,15 +56,15 @@
 | MPU6050 | I2C0，0x68 | SDA 32、SCL 33 |
 | WS2812 RGB LED | I2S0 | DATA 27 |
 
-腳位定義在 [boards/esp32_devkitc_procpu.overlay](boards/esp32_devkitc_procpu.overlay)。
+腳位定義在 [app/boards/esp32_devkitc_procpu.overlay](app/boards/esp32_devkitc_procpu.overlay)。
 
 ## 編譯與燒錄
 
-需要：
+在 dev container（`.devcontainer/`，Podman）裡建置，電腦上只需要 Podman 和 VS Code（或 `devcontainer` CLI）：
 
-- 一個 Zephyr west workspace（預設在 `~/Projects/zephyrproject`，其他位置用環境變數 `ZEPHYR_WORKSPACE` 指定）和 Zephyr SDK。目前用的是 Zephyr main（4.5 開發版）和 SDK 1.0.1。
-- Espressif 的 Wi-Fi blob：在 workspace 裡執行 `west blobs fetch hal_espressif`。
-- [just](https://just.systems) 和 [uv](https://docs.astral.sh/uv/)。電腦端的工具（`tools/*.py`）用這個專案自己的 uv 環境，不用另外安裝。
+- 映像檔是 Zephyr 的 `zephyr-build`，裡面有 Zephyr SDK（1.0.1）、west、just 和電腦端工具用的 Python 套件。
+- 第一次啟動時照 [west.yml](west.yml) 建好 west workspace：Zephyr（固定版本，4.5 開發版）、hal_espressif 和 Wi-Fi blob。放在 named volume 裡，重建 container 也會留著。
+- 啟動 container 前在電腦上把 `ZEPHYR_PORT` 設成板子的序列埠，最好用固定的 `/dev/serial/by-id/...` 路徑（ttyUSB 編號重新插拔會變）。container 會拿到這個裝置，燒錄、monitor 和測試都用它。啟動 container 時板子要插著。
 
 ```bash
 just            # 列出所有指令
@@ -76,7 +76,7 @@ just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
 just shot clock.png "app open Clock"   # 截圖存成 PNG，後面是截圖前要送的指令
 ```
 
-燒錄和測試會用到序列埠，要先關掉 monitor。序列埠預設是 CP2102 的固定路徑，換埠用 `just port=/dev/ttyUSB0 flash`。
+燒錄和測試會用到序列埠，要先關掉 monitor。序列埠是 `ZEPHYR_PORT`，臨時換埠用 `just port=/dev/ttyUSB0 flash`。
 
 ## 操作
 
@@ -140,7 +140,7 @@ just gif2jpg cat.gif out/cat          # GIF 轉成動畫資料夾
 - 檔名只能用英數字、空白和 `._-+()`。
 - 一次只服務一個連線，速度是幾十 KB/s。
 - 有 PIN 的人可以上傳 `/config.txt` 改設定，所以只在信任的網路上打開。
-- 也可以用 curl：`curl -b pin=1234 -T cat.jpg http://<IP>/photo/`，其他用法見 `src/apps/fg/share_page.c` 開頭。
+- 也可以用 curl：`curl -b pin=1234 -T cat.jpg http://<IP>/photo/`，其他用法見 `app/src/apps/fg/share_page.c` 開頭。
 
 ### Cast
 
@@ -156,7 +156,7 @@ just cast <IP> --screen               # 只支援 X11
 
 ## 新增 app
 
-在 `src/apps/fg/` 新增一個檔案，並加進 [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt)：
+在 `app/src/apps/fg/` 新增一個檔案，並加進 [app/src/apps/CMakeLists.txt](app/src/apps/CMakeLists.txt)：
 
 ```c
 #include "fg_app.h"
@@ -205,14 +205,16 @@ static void app_uptime_exit(void *scr)
 ## 專案結構
 
 ```
-boards/         硬體與腳位（devicetree overlay）
-prj.conf        Kconfig 設定和調整的原因
-include/        各模組的介面和用法說明
-src/            框架與共用模組
-src/apps/bg/    Menu
-src/apps/fg/    各個 app
-src/lib/tjpgd/  TJpgDec
-tools/          電腦端的工具：轉檔、投影、圖示字型、實機測試
+.devcontainer/      dev container（映像檔、west workspace 設定）
+west.yml            west manifest：Zephyr 版本和模組
+app/boards/         硬體與腳位（devicetree overlay）
+app/prj.conf        Kconfig 設定和調整的原因
+app/include/        各模組的介面和用法說明
+app/src/            框架與共用模組
+app/src/apps/bg/    Menu
+app/src/apps/fg/    各個 app
+app/src/lib/tjpgd/  TJpgDec
+tools/              電腦端的工具：轉檔、投影、圖示字型、實機測試
 ```
 
 ## 注意事項
@@ -222,19 +224,19 @@ tools/          電腦端的工具：轉檔、投影、圖示字型、實機測�
 - **畫面鏡像**：overlay 的 `mdac = <0x40>` 是左右鏡像，給透過稜鏡觀看用。上下顛倒時的改法寫在 overlay 的註解裡。
 - **只能一條 SPI 開 DMA**：兩條 SPI 共用 DMA 時脈，第二條會初始化失敗，所以只有螢幕開 DMA。
 - **SD 卡的 SPI 不能超過 20 MHz**：MISO 在 GPIO 26，要經過 GPIO 矩陣。
-- **I2C 維持 100 kHz**：板子上沒有外部上拉，靠 ESP32 的內建上拉（`src/i2c_pullup.c`）。GPIO 32/33 是 RTC pad，pinctrl 的上拉設定對它們沒有作用。
+- **I2C 維持 100 kHz**：板子上沒有外部上拉，靠 ESP32 的內建上拉（`app/src/i2c_pullup.c`）。GPIO 32/33 是 RTC pad，pinctrl 的上拉設定對它們沒有作用。
 - **重置後 IMU 可能讀不到**：MPU6050 不會跟著重置，可能卡在讀取途中拉著 SDA，所以開機時先做 bus recovery。
 - **不要在 `SYS_INIT` 裡繪圖**：LVGL 的 flush thread 要等所有 `SYS_INIT` 結束才啟動，在那之前繪圖會讓開機卡死。
-- **RAM 很緊**：兩個 DRAM 區域各只剩幾 KB，build 最後會印出用量。heap、buffer 和 stack 的大小都是照實測調的（`prj.conf` 有註解，shell 的 `kernel heap` 和 `kernel thread stacks` 可以量）。大塊的 buffer 加 `__noinit` 放到 region 1；只有某個 app 開著才需要的放進它的 `self_t`。
+- **RAM 很緊**：兩個 DRAM 區域各只剩幾 KB，build 最後會印出用量。heap、buffer 和 stack 的大小都是照實測調的（`app/prj.conf` 有註解，shell 的 `kernel heap` 和 `kernel thread stacks` 可以量）。大塊的 buffer 加 `__noinit` 放到 region 1；只有某個 app 開著才需要的放進它的 `self_t`。
 - **只能用 HTTP**：TLS 需要的記憶體放不下。回應太大時要邊收邊解析，像 `weather.c`。
 - **socket 很少**：server 主動斷線的連線會暫時佔著一個，所以 Share 盡量讓對方先斷線。
 - **Wi-Fi 不省電**：省電模式會讓傳輸速度掉一半。
 - **剛連上網路時 DNS 可能沒回應**：短時間內重新連線時偶爾發生，是網路端的行為，靠重試處理。`just test` 偶爾會因此出現一筆 SNTP 或 weather 的 warning。
 - **LED 偶爾寫入失敗**：ws2812 driver 在只有一顆 LED 時的時序問題，`led.c` 會重送。
-- **編譯器 bug**：SDK 1.0.1 的 Xtensa GCC 會把 TJpgDec 的一段迴圈編錯，解碼時當機。`src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
+- **編譯器 bug**：SDK 1.0.1 的 Xtensa GCC 會把 TJpgDec 的一段迴圈編錯，解碼時當機。`app/src/lib/tjpgd/tjpgd.c` 已改寫那一段，更新 TJpgDec 時要保留。
 - **`just test` 不一定會解碼 JPEG**：只有卡上有相片、而且 Gallery 開在 PHOTOS 分頁時才會。改到 JPEG 相關的程式後，要實際開 Gallery 或用 Cast 確認。截圖也截不到 JPEG，因為它是直接畫到螢幕的。
 - **字型**：內建的 Montserrat 不含中文。
 
 ## 授權
 
-`src/lib/tjpgd/` 是 ChaN 的 TJpgDec，授權見 [src/lib/tjpgd/LICENSE.txt](src/lib/tjpgd/LICENSE.txt)。App 圖示來自 Material Design Icons（Apache 2.0）。
+`app/src/lib/tjpgd/` 是 ChaN 的 TJpgDec，授權見 [app/src/lib/tjpgd/LICENSE.txt](app/src/lib/tjpgd/LICENSE.txt)。App 圖示來自 Material Design Icons（Apache 2.0）。

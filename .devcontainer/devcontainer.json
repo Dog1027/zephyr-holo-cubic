@@ -1,0 +1,32 @@
+// Dev container reference: https://containers.dev/implementors/json_reference/
+{
+	"name": "Zephyr",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+
+	// /workdir is this project's west workspace (zephyr + modules), kept in a
+	// per-project named volume so it survives container rebuilds.
+	// This repo is the manifest repository, bind-mounted as /workdir/<repo>.
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workdir/${localWorkspaceFolderBasename},type=bind",
+	"workspaceFolder": "/workdir/${localWorkspaceFolderBasename}",
+	"mounts": [
+		"source=${localWorkspaceFolderBasename}-west,target=/workdir,type=volume"
+	],
+
+	// Serial port for `just flash` / `just monitor`, taken from the host's ZEPHYR_PORT
+	// (e.g. a /dev/serial/by-id/... path), default /dev/ttyUSB0.
+	// The device must be plugged in when the container starts, or startup fails.
+	// --group-add=keep-groups is Podman-only: it passes the host user's groups
+	// (dialout/uucp) through so the serial port is accessible. Docker rejects it.
+	"runArgs": [
+		"--device=${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}:${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}",
+		"--group-add=keep-groups"
+	],
+	"containerEnv": {
+		"ZEPHYR_PORT": "${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}"
+	},
+
+	// west init -l (first time) + west update + blobs fetch
+	"postCreateCommand": ".devcontainer/setup-west.sh"
+}

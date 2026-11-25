@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the Aquarium app's creatures (src/apps/fg/aquarium_sprites.c / .h).
+"""Generate the Aquarium app's creatures (app/src/apps/fg/aquarium_sprites.c / .h).
 
-Usage: uv run python tools/mkaquarium.py [--preview sprites.png]
+Usage: python3 tools/mkaquarium.py [--preview sprites.png]
 
 Every creature is drawn here with a few shapes (supersampled, so the edges are smooth) as an
 alpha mask: LVGL draws an A8 image in the object's image_recolor color, so one sprite takes
@@ -222,7 +222,7 @@ typedef struct {{
 
 extern const aqua_sprite_t aqua_sprites[AQUA_SPECIES_COUNT];
 """
-    base = os.path.join(TOP, "src", "apps", "fg", "aquarium_sprites")
+    base = os.path.join(TOP, "app", "src", "apps", "fg", "aquarium_sprites")
     with open(base + ".c", "w") as f:
         f.write("\n".join(out))
     with open(base + ".h", "w") as f:

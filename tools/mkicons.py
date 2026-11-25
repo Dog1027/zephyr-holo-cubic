@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate the Menu's app icon font (src/icons.c, include/icons.h) from an icon font file.
+"""Generate the Menu's app icon font (app/src/icons.c, app/include/icons.h) from an icon font file.
 
-Usage: uv run python tools/mkicons.py FONT [--size 72] [--preview icons.png]
+Usage: python3 tools/mkicons.py FONT [--size 72] [--preview icons.png]
 
 FONT is any Nerd Font "Propo" file (they bundle Material Design Icons, whose code points are
 used below), e.g. ~/.local/share/fonts/UbuntuNerdFontPropo-Regular.ttf. To change or add an icon,
@@ -141,9 +141,9 @@ extern const lv_font_t font_icons;
         utf8 = "".join(f"\\x{b:02X}" for b in chr(cp).encode())
         hdr += f"#define ICON_{cname:{width}} \"{utf8}\"  // {name}\n"
 
-    with open(os.path.join(TOP, "src", "icons.c"), "w") as f:
+    with open(os.path.join(TOP, "app", "src", "icons.c"), "w") as f:
         f.write(src)
-    with open(os.path.join(TOP, "include", "icons.h"), "w") as f:
+    with open(os.path.join(TOP, "app", "include", "icons.h"), "w") as f:
         f.write(hdr)
     print(f"{len(glyphs)} icons, {index} bytes of bitmaps, line height {ascent + descent}")
 

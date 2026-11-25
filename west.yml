@@ -1,0 +1,24 @@
+# West manifest (T2 "star" topology): this repo is the manifest repository.
+#
+# The dev container sets up the workspace automatically (.devcontainer/setup-west.sh).
+# Manual equivalent, from the directory that contains this repo:
+#
+#   west init -l <repo-dir>
+#   west update
+#   west blobs fetch
+#
+# Add other HAL modules to name-allowlist when targeting other SoCs.
+
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      # v4.5.0-1672-g072fd9442fe (tested)
+      revision: 072fd9442fe12568bcc3d3c61e4f390ed5cf35a3
+      import:
+        name-allowlist:
+          - hal_espressif

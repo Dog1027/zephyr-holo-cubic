@@ -6,7 +6,7 @@ A HoloCubic-style desk gadget built on Zephyr RTOS and LVGL: an ESP32 drives a 2
 
 You control it with shell commands over the USB serial port, or by tapping the cube.
 
-The code is the reference; this document only covers what is hard to see from the code. Each module's usage is in the comment at the top of `include/*.h`, the shell's `help` lists the commands, and `just` lists the build recipes.
+The code is the reference; this document only covers what is hard to see from the code. Each module's usage is in the comment at the top of `app/include/*.h`, the shell's `help` lists the commands, and `just` lists the build recipes.
 
 ## Apps
 
@@ -56,15 +56,15 @@ The screenshots are the raw screen; through the prism it looks darker and softer
 | MPU6050 | I2C0, 0x68 | SDA 32, SCL 33 |
 | WS2812 RGB LED | I2S0 | DATA 27 |
 
-Pins are defined in [boards/esp32_devkitc_procpu.overlay](boards/esp32_devkitc_procpu.overlay).
+Pins are defined in [app/boards/esp32_devkitc_procpu.overlay](app/boards/esp32_devkitc_procpu.overlay).
 
 ## Build and flash
 
-You need:
+Builds run in the dev container (`.devcontainer/`, Podman), so the host only needs Podman and VS Code (or the `devcontainer` CLI):
 
-- A Zephyr west workspace (`~/Projects/zephyrproject` by default; set `ZEPHYR_WORKSPACE` for another location) and the Zephyr SDK. Currently Zephyr main (4.5 development) and SDK 1.0.1.
-- Espressif's Wi-Fi blobs: run `west blobs fetch hal_espressif` in the workspace.
-- [just](https://just.systems) and [uv](https://docs.astral.sh/uv/). The host tools (`tools/*.py`) run in this project's own uv environment; nothing else to install.
+- The image is Zephyr's `zephyr-build`, with the Zephyr SDK (1.0.1), west, just and the Python packages the host tools use.
+- The first start sets up the west workspace from [west.yml](west.yml): Zephyr (pinned revision, 4.5 development), hal_espressif and the Wi-Fi blobs. It lives in a named volume, so rebuilding the container keeps it.
+- Set `ZEPHYR_PORT` on the host to the board's serial port before starting the container, preferably the fixed `/dev/serial/by-id/...` path (ttyUSB numbers change on replug). The container gets that device and uses it for flashing, the monitor and the tests. The board must be plugged in when the container starts.
 
 ```bash
 just            # list all recipes
@@ -76,7 +76,7 @@ just test-share # test the Files app's SHARE tab on the device (needs Wi-Fi)
 just shot clock.png "app open Clock"   # save the screen as a PNG; the rest are commands sent first
 ```
 
-Flashing and the tests use the serial port, so close the monitor first. The port defaults to the CP2102's fixed path; use another with `just port=/dev/ttyUSB0 flash`.
+Flashing and the tests use the serial port, so close the monitor first. The port is `ZEPHYR_PORT`; override it once with `just port=/dev/ttyUSB0 flash`.
 
 ## Usage
 
@@ -140,7 +140,7 @@ Open Files and switch to the SHARE tab; the screen shows an address and a 4-digi
 - File names may only use letters, digits, spaces and `._-+()`.
 - It serves one connection at a time, at a few tens of KB/s.
 - Anyone with the PIN can upload `/config.txt` and change the settings, so only open it on networks you trust.
-- curl works too: `curl -b pin=1234 -T cat.jpg http://<IP>/photo/`; more in the comment at the top of `src/apps/fg/share_page.c`.
+- curl works too: `curl -b pin=1234 -T cat.jpg http://<IP>/photo/`; more in the comment at the top of `app/src/apps/fg/share_page.c`.
 
 ### Cast
 
@@ -156,7 +156,7 @@ It runs at a few frames per second; smaller is smoother (`--size 160x160`). More
 
 ## Adding an app
 
-Add a file to `src/apps/fg/` and list it in [src/apps/CMakeLists.txt](src/apps/CMakeLists.txt):
+Add a file to `app/src/apps/fg/` and list it in [app/src/apps/CMakeLists.txt](app/src/apps/CMakeLists.txt):
 
 ```c
 #include "fg_app.h"
@@ -205,14 +205,16 @@ Rules:
 ## Project layout
 
 ```
-boards/         hardware and pins (devicetree overlay)
-prj.conf        Kconfig settings and why they were tuned
-include/        module interfaces and how to use them
-src/            framework and shared modules
-src/apps/bg/    Menu
-src/apps/fg/    the apps
-src/lib/tjpgd/  TJpgDec
-tools/          host tools: converters, casting, icon font, on-device tests
+.devcontainer/      dev container (image, west workspace setup)
+west.yml            west manifest: Zephyr revision and modules
+app/boards/         hardware and pins (devicetree overlay)
+app/prj.conf        Kconfig settings and why they were tuned
+app/include/        module interfaces and how to use them
+app/src/            framework and shared modules
+app/src/apps/bg/    Menu
+app/src/apps/fg/    the apps
+app/src/lib/tjpgd/  TJpgDec
+tools/              host tools: converters, casting, icon font, on-device tests
 ```
 
 ## Pitfalls
@@ -222,19 +224,19 @@ Problems found during development — read before changing the related parts:
 - **Mirrored screen**: `mdac = <0x40>` in the overlay mirrors left and right for viewing through the prism. How to fix an upside-down image is in the overlay's comments.
 - **Only one SPI bus can use DMA**: both buses share the DMA clock and the second fails to initialise, so only the screen uses DMA.
 - **The SD card's SPI must stay at or below 20 MHz**: MISO is on GPIO 26, which goes through the GPIO matrix.
-- **Keep I2C at 100 kHz**: the board has no external pull-ups and relies on the ESP32's internal ones (`src/i2c_pullup.c`). GPIO 32/33 are RTC pads, where the pinctrl pull-up setting has no effect.
+- **Keep I2C at 100 kHz**: the board has no external pull-ups and relies on the ESP32's internal ones (`app/src/i2c_pullup.c`). GPIO 32/33 are RTC pads, where the pinctrl pull-up setting has no effect.
 - **The IMU may not answer after a reset**: the MPU6050 is not reset with the ESP32 and can be stuck mid-read holding SDA low, so boot starts with a bus recovery.
 - **Do not draw in `SYS_INIT`**: LVGL's flush thread only starts after every `SYS_INIT` has finished; drawing before then hangs the boot.
-- **RAM is tight**: both DRAM regions have only a few KB left; the build prints the usage at the end. Heap, buffer and stack sizes are tuned from measurements (commented in `prj.conf`; measure with the shell's `kernel heap` and `kernel thread stacks`). Put large buffers in region 1 with `__noinit`; put what only one app needs in that app's `self_t`.
+- **RAM is tight**: both DRAM regions have only a few KB left; the build prints the usage at the end. Heap, buffer and stack sizes are tuned from measurements (commented in `app/prj.conf`; measure with the shell's `kernel heap` and `kernel thread stacks`). Put large buffers in region 1 with `__noinit`; put what only one app needs in that app's `self_t`.
 - **HTTP only**: TLS needs more memory than there is. Parse large responses while receiving them, like `weather.c`.
 - **Few sockets**: a connection the server closes first holds a socket for a while, so Share lets the client close first whenever it can.
 - **No Wi-Fi power saving**: power-save mode halves the transfer speed.
 - **DNS may not answer right after connecting**: it sometimes happens when reconnecting soon after a disconnect; it is the network's behaviour and is handled by retrying. Because of it, `just test` sometimes reports an SNTP or weather warning.
 - **LED writes sometimes fail**: a timing issue in the ws2812 driver with a single LED; `led.c` resends.
-- **Compiler bug**: SDK 1.0.1's Xtensa GCC miscompiles a loop in TJpgDec and the decoder crashes. That part of `src/lib/tjpgd/tjpgd.c` is rewritten; keep the rewrite when updating TJpgDec.
+- **Compiler bug**: SDK 1.0.1's Xtensa GCC miscompiles a loop in TJpgDec and the decoder crashes. That part of `app/src/lib/tjpgd/tjpgd.c` is rewritten; keep the rewrite when updating TJpgDec.
 - **`just test` may not decode any JPEG**: it only does if Gallery opens on its PHOTOS tab with photos on the card. After changing anything JPEG-related, open Gallery or use Cast to check. Screenshots cannot capture JPEGs either, since they are drawn straight to the screen.
 - **Fonts**: the built-in Montserrat has no CJK characters.
 
 ## License
 
-`src/lib/tjpgd/` is ChaN's TJpgDec; see [src/lib/tjpgd/LICENSE.txt](src/lib/tjpgd/LICENSE.txt) for its license. App icons are from Material Design Icons (Apache 2.0).
+`app/src/lib/tjpgd/` is ChaN's TJpgDec; see [app/src/lib/tjpgd/LICENSE.txt](app/src/lib/tjpgd/LICENSE.txt) for its license. App icons are from Material Design Icons (Apache 2.0).

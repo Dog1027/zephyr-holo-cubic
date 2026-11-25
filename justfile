@@ -11,20 +11,18 @@ import 'zephyr.just'
 
 board := "esp32_devkitc/esp32/procpu"
 baud  := "921600"
-# Fixed path of the board's CP2102: other USB serial devices (FTDI) are plugged in too,
+# Serial port: set ZEPHYR_PORT on the host (the dev container gets that device and the variable).
+# Use the board's fixed /dev/serial/by-id/... path: other USB serial devices (FTDI) are plugged in too,
 # and ttyUSB numbers change on replug. Override: just port=/dev/ttyUSB0 flash
-port  := "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0"
+port  := env("ZEPHYR_PORT", "/dev/ttyUSB0")
 flash_args := "--esp-device " + port + " --esp-baud-rate " + baud
-# Host tools (tools/*.py) use this project's own uv environment (pyproject.toml + uv.lock -> .venv),
-# not the Zephyr workspace venv. -I keeps the cwd and env out of sys.path
-python := "uv run --project " + topdir + " python -I"
+# Host tools (tools/*.py) need Pillow and pyserial, already in the dev container's Python.
+# -I keeps the cwd and env out of sys.path
+python := "python3 -I"
 
 # Open serial monitor
-# `west espressif` reads runners.yaml from the build dir it finds on its own, before parsing
-# any arguments (-e does not help), so it has to run from inside build_dir. build_dir is not in
-# the west workspace, so ZEPHYR_BASE tells west where the workspace is.
 monitor:
-    cd {{build_dir}} && ZEPHYR_BASE={{workspace}}/zephyr uv run --no-project --python {{workspace}}/.venv west espressif monitor -p {{port}}
+    {{west}} espressif monitor -p {{port}}
 
 # Convert a GIF into a baseline JPEG sequence, e.g. just gif2jpg anim.gif out/anim 120x120
 gif2jpg gif out size="240x240" quality="80" bg="000000":
