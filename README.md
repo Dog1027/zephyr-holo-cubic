@@ -64,7 +64,7 @@ Builds run in the dev container (`.devcontainer/`, Podman), so the host only nee
 
 - The image is Zephyr's `zephyr-build`, with the Zephyr SDK (1.0.1), west, just and the Python packages the host tools use.
 - The first start sets up the west workspace from [west.yml](west.yml): Zephyr (pinned revision, 4.5 development), hal_espressif and the Wi-Fi blobs. It lives in a named volume, so rebuilding the container keeps it.
-- Set `ZEPHYR_PORT` on the host to the board's serial port before starting the container, preferably the fixed `/dev/serial/by-id/...` path (ttyUSB numbers change on replug). The container gets that device and uses it for flashing, the monitor and the tests. The board must be plugged in when the container starts.
+- The host's `/dev` is mounted at `/host/dev`, so the board can be plugged in or replugged while the container runs. The port is the CP2102's fixed `/dev/serial/by-id/...` path (ttyUSB numbers change on replug, and other USB serial devices may be plugged in); it is used for flashing, the monitor and the tests.
 
 ```bash
 just            # list all recipes
@@ -76,7 +76,7 @@ just test-share # test the Files app's SHARE tab on the device (needs Wi-Fi)
 just shot clock.png "app open Clock"   # save the screen as a PNG; the rest are commands sent first
 ```
 
-Flashing and the tests use the serial port, so close the monitor first. The port is `ZEPHYR_PORT`; override it once with `just port=/dev/ttyUSB0 flash`.
+Flashing and the tests use the serial port, so close the monitor first. Use another port with `just port=/host/dev/ttyUSB0 flash`.
 
 ## Usage
 

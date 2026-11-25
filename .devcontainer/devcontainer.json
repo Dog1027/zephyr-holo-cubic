@@ -14,18 +14,17 @@
 		"source=${localWorkspaceFolderBasename}-west,target=/workdir,type=volume"
 	],
 
-	// Serial port for `just flash` / `just monitor`, taken from the host's ZEPHYR_PORT
-	// (e.g. a /dev/serial/by-id/... path), default /dev/ttyUSB0.
-	// The device must be plugged in when the container starts, or startup fails.
+	// Serial ports for `just flash` / `just monitor` (port is set in justfile).
+	// The host's /dev is mounted live at /host/dev, so boards can be plugged in after the
+	// container starts and USB-native ports (ttyACM*) that re-enumerate on reset keep working.
+	// Note: this exposes all host device nodes; access is limited to what the host user
+	// can open (rootless Podman).
 	// --group-add=keep-groups is Podman-only: it passes the host user's groups
 	// (dialout/uucp) through so the serial port is accessible. Docker rejects it.
 	"runArgs": [
-		"--device=${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}:${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}",
+		"--volume=/dev:/host/dev",
 		"--group-add=keep-groups"
 	],
-	"containerEnv": {
-		"ZEPHYR_PORT": "${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}"
-	},
 
 	// west init -l (first time) + west update + blobs fetch
 	"postCreateCommand": ".devcontainer/setup-west.sh"

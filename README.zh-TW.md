@@ -64,7 +64,7 @@
 
 - 映像檔是 Zephyr 的 `zephyr-build`，裡面有 Zephyr SDK（1.0.1）、west、just 和電腦端工具用的 Python 套件。
 - 第一次啟動時照 [west.yml](west.yml) 建好 west workspace：Zephyr（固定版本，4.5 開發版）、hal_espressif 和 Wi-Fi blob。放在 named volume 裡，重建 container 也會留著。
-- 啟動 container 前在電腦上把 `ZEPHYR_PORT` 設成板子的序列埠，最好用固定的 `/dev/serial/by-id/...` 路徑（ttyUSB 編號重新插拔會變）。container 會拿到這個裝置，燒錄、monitor 和測試都用它。啟動 container 時板子要插著。
+- 電腦的 `/dev` 掛在 container 的 `/host/dev`，container 開著時也可以插拔板子。序列埠用 CP2102 固定的 `/dev/serial/by-id/...` 路徑（ttyUSB 編號重新插拔會變，也可能插著其他 USB 序列裝置），燒錄、monitor 和測試都用它。
 
 ```bash
 just            # 列出所有指令
@@ -76,7 +76,7 @@ just test-share # 實機測試 Files 的 SHARE 分頁（需要 Wi-Fi）
 just shot clock.png "app open Clock"   # 截圖存成 PNG，後面是截圖前要送的指令
 ```
 
-燒錄和測試會用到序列埠，要先關掉 monitor。序列埠是 `ZEPHYR_PORT`，臨時換埠用 `just port=/dev/ttyUSB0 flash`。
+燒錄和測試會用到序列埠，要先關掉 monitor。換埠用 `just port=/host/dev/ttyUSB0 flash`。
 
 ## 操作
 

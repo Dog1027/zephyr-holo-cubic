@@ -11,10 +11,7 @@ import 'zephyr.just'
 
 board := "esp32_devkitc/esp32/procpu"
 baud  := "921600"
-# Serial port: set ZEPHYR_PORT on the host (the dev container gets that device and the variable).
-# Use the board's fixed /dev/serial/by-id/... path: other USB serial devices (FTDI) are plugged in too,
-# and ttyUSB numbers change on replug. Override: just port=/dev/ttyUSB0 flash
-port  := env("ZEPHYR_PORT", "/dev/ttyUSB0")
+port  := `p=(/host/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_*-if00-port0); echo "${p[0]}"`
 flash_args := "--esp-device " + port + " --esp-baud-rate " + baud
 # Host tools (tools/*.py) need Pillow and pyserial, already in the dev container's Python.
 # -I keeps the cwd and env out of sys.path
