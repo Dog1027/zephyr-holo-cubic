@@ -28,6 +28,9 @@ After boot you get the Menu, a horizontal carousel.
 <td align="center"><img src="docs/screenshots/level.png" width="160"><br>Level</td>
 <td align="center"><img src="docs/screenshots/aquarium.png" width="160"><br>Aquarium</td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screenshots/matrix.png" width="160"><br>Matrix</td>
+</tr>
 </table>
 
 The screenshots are the raw screen; through the prism it looks darker and softer. Take new ones with `just shot`.
@@ -44,6 +47,7 @@ The screenshots are the raw screen; through the prism it looks darker and softer
 | System | SYSTEM tab: heap, SD card, stack usage of every thread; WI-FI tab: signal strength, IP, nearby networks. One item at a time, up / down to move |
 | Cast | Shows images, GIFs or your screen from a computer on the cube |
 | Aquarium | Jellyfish and microbes; tap or OK to feed them |
+| Matrix | Matrix-style falling characters; tap or OK changes the color, up / down the speed |
 | Test | An empty app for trying out new features |
 
 ## Hardware

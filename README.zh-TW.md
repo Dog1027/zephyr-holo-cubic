@@ -28,6 +28,9 @@
 <td align="center"><img src="docs/screenshots/level.png" width="160"><br>Level</td>
 <td align="center"><img src="docs/screenshots/aquarium.png" width="160"><br>Aquarium</td>
 </tr>
+<tr>
+<td align="center"><img src="docs/screenshots/matrix.png" width="160"><br>Matrix</td>
+</tr>
 </table>
 
 截圖是螢幕上的原始畫面，透過稜鏡看會比較暗、比較糊。重截用 `just shot`。
@@ -44,6 +47,7 @@
 | System | SYSTEM 分頁：heap、SD 卡、每個 thread 的 stack 用量；WI-FI 分頁：訊號強度、IP、附近的網路。一次顯示一項，上下換項目 |
 | Cast | 把電腦上的圖片、GIF 或螢幕畫面投到方塊上 |
 | Aquarium | 水母和微生物，敲一下或 OK 撒飼料 |
+| Matrix | 駭客任務風格的文字雨，敲一下或 OK 換顏色，上 / 下調速度 |
 | Test | 空的 app，測試新功能用 |
 
 ## 硬體

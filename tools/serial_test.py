@@ -68,6 +68,7 @@ plan = [
     ("System", ["ui down", "ui up", "ui tap", "ui right", "ui ok", "ui left"]),
     ("Cast", []),
     ("Aquarium", ["ui tap", "ui ok"]),
+    ("Matrix", []),
     ("Test", ["ui tap"]),
 ]
 for app, extra in plan:
